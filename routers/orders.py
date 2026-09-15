@@ -7,6 +7,8 @@ from fastapi import Path, Query, HTTPException, status, APIRouter
 from dependencies import SessionDep
 from main_db import OrderItem, OrderCreate, OrderItemPublic, Order, OrderListResponse, OrderPublic, Product
 
+from services import orders
+
 router = APIRouter(
     prefix = "/orders",
     tags = ["orders"]
@@ -22,73 +24,26 @@ def create_order(
     order_data: OrderCreate,
     session: SessionDep
 ):
-    product_ids = [
-        item.product_id
-        for item in order_data.items
-    ]
-    if len(product_ids) != len(set(product_ids)):
+    try:
+        return orders.create_order(order_data, session)
+
+    except orders.DuplicateProductException:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Duplicate product in order"
         )
-    products: dict[int, Product] = {}
-    for item in order_data.items:
-        product = session.get(Product, item.product_id)
-        if product is None:
-            raise HTTPException(
+
+    except orders.ProductNotFoundException as exc:
+        raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product {item.product_id} not found"
+                detail=f"Product {exc.product_id} not found"
             )
-        if product.stock < item.quantity:
-            raise HTTPException(
+
+    except orders.InsufficientStockException as exc:
+        raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Insufficient stock for product {item.product_id}"
+                detail=f"Insufficient stock for product {exc.product_id}"
             )
-        products[item.product_id] = product
-
-    try:
-        order = Order(
-            status="pending"
-        )
-        session.add(order)
-        # insert order 但不 commit, 得到 order_id
-        session.flush()
-
-        assert order.id is not None
-
-        create_items = []
-        for item in order_data.items:
-            product = products[item.product_id]
-            product.stock -= item.quantity
-            order_item = OrderItem(
-                order_id=order.id,
-                product_id=item.product_id,
-                quantity=item.quantity
-            )
-            session.add(order_item)
-            order.items.append(order_item)
-            create_items.append(order_item)
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-
-    session.refresh(order)
-    for item in create_items:
-        session.refresh(item)
-    
-    return OrderPublic(
-        id = order.id,
-        status = order.status,
-        items = [
-            OrderItemPublic(
-                id = item.id,
-                product_id=item.product_id,
-                quantity = item.quantity
-            )
-            for item in create_items
-        ]
-    )
 
 # GET "/orders/{order_id}"
 @router.get(
@@ -99,13 +54,14 @@ def get_order(
     order_id: Annotated[int, Path(gt=0)],
     session: SessionDep
 ):
-    order = session.get(Order, order_id)
-    if order is None:
+    try:
+        return orders.get_order(order_id, session)
+
+    except orders.OrderNotFoundException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Order {order_id} not found"
+            detail=f"Order {exc.order_id} not found"
         )
-    return order
 
 # GET "/orders/"
 @router.get(
