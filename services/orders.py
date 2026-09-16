@@ -1,6 +1,6 @@
-from typing import Annotated, Literal
+from typing import Literal
 
-from sqlmodel import Session, Field, select
+from sqlmodel import Session, select
 from sqlalchemy import func, distinct
 from sqlalchemy.orm import selectinload
 
@@ -91,12 +91,12 @@ def get_order(
 
 def get_orders(
     session: Session,
-    product_id: Annotated[int | None, Field(gt=0)] = None,
-    status_filter: Annotated[str | None, Field(alias="status", max_length=20)] = None,
-    sort_order: Annotated[str, Field(Literal["asc", "desc"])] = "desc",
-    offset: Annotated[int, Field(ge=0)] = 0,
-    limit: Annotated[int, Field(ge=1, le=100)] = 20,
-):
+    product_id: int | None = None,
+    status_filter: str | None = None,
+    sort_order: Literal["asc", "desc"] = "desc",
+    offset: int = 0,
+    limit: int = 20,
+) -> tuple[list[Order], int]:
     statement = select(Order)
     count_statement = select(
         func.count(distinct(Order.id))
@@ -124,4 +124,4 @@ def get_orders(
     )
     orders = session.exec(statement).all()
     count = session.exec(count_statement).one()
-    return [orders, count, offset, limit]
+    return list(orders), count

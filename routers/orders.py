@@ -1,11 +1,9 @@
 from typing import Annotated
-from sqlmodel import select
-from sqlalchemy.orm import selectinload
-from sqlalchemy import distinct, func
+
 from fastapi import Path, Query, HTTPException, status, APIRouter
 
 from dependencies import SessionDep
-from main_db import OrderItem, OrderCreate, OrderItemPublic, Order, OrderListResponse, OrderPublic, Product
+from main_db import OrderCreate, OrderListResponse, OrderPublic
 
 from services import orders
 
@@ -76,35 +74,16 @@ def get_orders(
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ):
-    statement = select(Order)
-    count_statement = select(
-        func.count(distinct(Order.id))
-    ).select_from(Order)
-
-    if product_id is not None:
-        statement = statement.join(OrderItem).where(OrderItem.product_id == product_id).distinct()
-        count_statement = count_statement.join(OrderItem).where(OrderItem.product_id == product_id)
-    
-    if status_filter is not None:
-        statement = statement.where(Order.status == status_filter)
-        count_statement = count_statement.where(Order.status == status_filter)
-    
-    if sort_order == "asc":
-        statement = statement.order_by(Order.id.asc())
-    else:
-        statement = statement.order_by(Order.id.desc())
-    
-    statement = (statement
-                 .offset(offset)
-                 .limit(limit)
-                 .options(
-                    selectinload(Order.items)
-        )
+    order_list, count = orders.get_orders(
+        session,
+        product_id,
+        status_filter,
+        sort_order,
+        offset,
+        limit
     )
-    orders = session.exec(statement).all()
-    count = session.exec(count_statement).one()
     return OrderListResponse(
-        items=orders,
+        items=order_list,
         total=count,
         offset=offset,
         limit=limit

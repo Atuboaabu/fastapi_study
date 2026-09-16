@@ -1,11 +1,10 @@
 from typing import Annotated
-from sqlmodel import select
-from sqlalchemy.exc import IntegrityError
 from fastapi import Path, Depends, status, HTTPException, APIRouter, Response
 
 from dependencies import SessionDep
 
 from main_db import Product, ProductCreate, ProductPublic, ProductUpdate
+from services import products
 
 router = APIRouter(
     prefix = "/products",
@@ -14,13 +13,14 @@ router = APIRouter(
 
 # product 内部 dependencies
 def get_product_or_404(product_id: Annotated[int, Path(gt=0)], session: SessionDep):
-    product = session.get(Product, product_id)
-    if product is None:
+    try:
+        return products.get_product(product_id, session)
+    except products.ProductNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found",
         )
-    return product
+
 ProductDep = Annotated[Product, Depends(get_product_or_404)]
 
 # POST "/products/"
@@ -33,27 +33,21 @@ def create_product(
     product: ProductCreate,
     session: SessionDep
 ):
-    statement = select(Product).where(Product.sku == product.sku)
-    existing_product = session.exec(statement).first()
-    if existing_product is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Product sku already exists"
-        )
-
-    db_product = Product.model_validate(product)
-    session.add(db_product)
     try:
-        session.commit()
-    except IntegrityError:
-        session.rollback()
+        return products.create_product(
+            product,
+            session
+        )
+    except products.ProductSkuExistsException:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Product sku already exists"
         )
-    session.refresh(db_product)
-
-    return db_product
+    except products.ProductIntergrityException:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Product intergrity error"
+        )
 
 # GET "/products/"
 @router.get(
@@ -63,9 +57,7 @@ def create_product(
 def get_products(
     session: SessionDep
 ):
-    statement = select(Product)
-    products = session.exec(statement).all()
-    return products
+    return products.get_products(session)
 
 # GET "/products/{product_id}"
 @router.get(
@@ -84,8 +76,7 @@ def del_product(
     product: ProductDep,
     session: SessionDep
 ):
-    session.delete(product)
-    session.commit()
+    products.del_product(product, session)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # PATCH "/products/{product_id}"
@@ -98,15 +89,11 @@ def patch_product(
     product: ProductDep,
     session: SessionDep
 ):
-    update_data = update_product.model_dump(
-        exclude_unset=True
+    return products.patch_product(
+        update_product,
+        product,
+        session
     )
-    product.sqlmodel_update(
-        update_data
-    )
-    session.commit()
-    session.refresh(product)
-    return product
 
 # PUT "/products/{product_id}"
 @router.put(
@@ -118,11 +105,9 @@ def put_product(
     product: ProductDep,
     session: SessionDep
 ):
-    update_data = update_product.model_dump()
-    product.sqlmodel_update(
-        update_data
+    return products.put_product(
+        update_product,
+        product,
+        session
     )
-    session.commit()
-    session.refresh(product)
-    return product
 
