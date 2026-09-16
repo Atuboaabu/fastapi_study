@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Path, Query, HTTPException, status, APIRouter
+from fastapi import Path, Query, status, APIRouter
 
 from dependencies import SessionDep
 from main_db import OrderCreate, OrderListResponse, OrderPublic
@@ -22,26 +22,7 @@ def create_order(
     order_data: OrderCreate,
     session: SessionDep
 ):
-    try:
-        return orders.create_order(order_data, session)
-
-    except orders.DuplicateProductException:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Duplicate product in order"
-        )
-
-    except orders.ProductNotFoundException as exc:
-        raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product {exc.product_id} not found"
-            )
-
-    except orders.InsufficientStockException as exc:
-        raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Insufficient stock for product {exc.product_id}"
-            )
+    return orders.create_order(order_data, session)
 
 # GET "/orders/{order_id}"
 @router.get(
@@ -52,14 +33,7 @@ def get_order(
     order_id: Annotated[int, Path(gt=0)],
     session: SessionDep
 ):
-    try:
-        return orders.get_order(order_id, session)
-
-    except orders.OrderNotFoundException as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Order {exc.order_id} not found"
-        )
+    return orders.get_order(order_id, session)
 
 # GET "/orders/"
 @router.get(

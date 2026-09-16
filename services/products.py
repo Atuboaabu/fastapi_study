@@ -10,8 +10,9 @@ class ProductNotFoundException(Exception):
 class ProductSkuExistsException(Exception):
     pass
 
-class ProductIntergrityException(Exception):
-    pass
+class ProductInUseException(Exception):
+    def __init__(self, product_id: int) -> None:
+        self.product_id = product_id
 
 def get_product(
     product_id: int,
@@ -39,7 +40,7 @@ def create_product(
         session.commit()
     except IntegrityError:
         session.rollback()
-        raise ProductIntergrityException()
+        raise ProductSkuExistsException()
     session.refresh(db_product)
 
     return db_product
@@ -55,8 +56,12 @@ def del_product(
     product: Product,
     session: Session
 ) -> None:
-    session.delete(product)
-    session.commit()
+    try:
+        session.delete(product)
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise ProductInUseException(product.id)
 
 def patch_product(
     update_product: ProductUpdate,
@@ -82,6 +87,9 @@ def put_product(
     product.sqlmodel_update(
         update_data
     )
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        raise ProductSkuExistsException()
     session.refresh(product)
     return product

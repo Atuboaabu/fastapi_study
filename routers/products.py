@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import Path, Depends, status, HTTPException, APIRouter, Response
+from fastapi import Path, Depends, status, APIRouter, Response
 
 from dependencies import SessionDep
 
@@ -13,13 +13,7 @@ router = APIRouter(
 
 # product 内部 dependencies
 def get_product_or_404(product_id: Annotated[int, Path(gt=0)], session: SessionDep):
-    try:
-        return products.get_product(product_id, session)
-    except products.ProductNotFoundException:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product not found",
-        )
+    return products.get_product(product_id, session)
 
 ProductDep = Annotated[Product, Depends(get_product_or_404)]
 
@@ -33,21 +27,10 @@ def create_product(
     product: ProductCreate,
     session: SessionDep
 ):
-    try:
-        return products.create_product(
-            product,
-            session
-        )
-    except products.ProductSkuExistsException:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Product sku already exists"
-        )
-    except products.ProductIntergrityException:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Product intergrity error"
-        )
+    return products.create_product(
+        product,
+        session
+    )
 
 # GET "/products/"
 @router.get(
@@ -105,9 +88,9 @@ def put_product(
     product: ProductDep,
     session: SessionDep
 ):
-    return products.put_product(
+    product = products.put_product(
         update_product,
         product,
         session
     )
-
+    return product
