@@ -8,3 +8,8 @@ dependencies = [
     "pydantic-settings>=2.15.0",
     "sqlmodel>=0.0.42",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
