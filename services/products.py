@@ -2,17 +2,7 @@ from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 
 from main_db import Product, ProductCreate, ProductUpdate
-
-# procudt services excetion 定义
-class ProductNotFoundException(Exception):
-    pass
-
-class ProductSkuExistsException(Exception):
-    pass
-
-class ProductInUseException(Exception):
-    def __init__(self, product_id: int) -> None:
-        self.product_id = product_id
+from exceptions import ProductNotFoundException, ProductSkuExistsException, ProductInUseException
 
 def get_product(
     product_id: int,
@@ -21,7 +11,7 @@ def get_product(
     product = session.get(Product, product_id)
     
     if product is None:
-        raise ProductNotFoundException()
+        raise ProductNotFoundException(product_id)
     
     return product
 
@@ -32,7 +22,7 @@ def create_product(
     statement = select(Product).where(Product.sku == product.sku)
     existing_product = session.exec(statement).first()
     if existing_product is not None:
-        raise ProductSkuExistsException()
+        raise ProductSkuExistsException(product.sku)
 
     db_product = Product.model_validate(product)
     session.add(db_product)
@@ -40,7 +30,7 @@ def create_product(
         session.commit()
     except IntegrityError:
         session.rollback()
-        raise ProductSkuExistsException()
+        raise ProductSkuExistsException(product.sku)
     session.refresh(db_product)
 
     return db_product
@@ -90,6 +80,7 @@ def put_product(
     try:
         session.commit()
     except IntegrityError:
-        raise ProductSkuExistsException()
+        session.rollback()
+        raise ProductSkuExistsException(product.sku)
     session.refresh(product)
     return product

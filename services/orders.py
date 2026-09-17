@@ -5,22 +5,7 @@ from sqlalchemy import func, distinct
 from sqlalchemy.orm import selectinload
 
 from main_db import Order, OrderCreate, OrderItem, Product
-
-# Order Service Exception 定义
-class DuplicateProductException(Exception):
-    pass
-
-class ProductNotFoundException(Exception):
-    def __init__(self, product_id: int):
-        self.product_id = product_id
-
-class InsufficientStockException(Exception):
-    def __init__(self, product_id: int):
-        self.product_id = product_id
-
-class OrderNotFoundException(Exception):
-    def __init__(self, order_id: int):
-        self.order_id = order_id
+from exceptions import ProductNotFoundException, DuplicateProductException, InsufficientStockException, OrderNotFoundException
 
 def create_order(
     order_data: OrderCreate,
