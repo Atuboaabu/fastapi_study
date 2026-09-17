@@ -4,7 +4,8 @@ from sqlmodel import Session, select
 from sqlalchemy import func, distinct
 from sqlalchemy.orm import selectinload
 
-from main_db import Order, OrderCreate, OrderItem, Product
+from models import Order, OrderItem, Product
+from schemas import OrderCreate
 from exceptions import ProductNotFoundException, DuplicateProductException, InsufficientStockException, OrderNotFoundException
 
 def create_order(

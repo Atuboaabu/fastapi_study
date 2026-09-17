@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from main_db import lifespan
+from database import lifespan
 from routers import products, orders
 from exception_handlers import register_exception_handlers
 

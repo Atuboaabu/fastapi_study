@@ -1,7 +1,8 @@
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 
-from main_db import Product, ProductCreate, ProductUpdate
+from models import Product
+from schemas import ProductCreate, ProductUpdate
 from exceptions import ProductNotFoundException, ProductSkuExistsException, ProductInUseException
 
 def get_product(
@@ -81,6 +82,6 @@ def put_product(
         session.commit()
     except IntegrityError:
         session.rollback()
-        raise ProductSkuExistsException(product.sku)
+        raise ProductSkuExistsException(update_product.sku)
     session.refresh(product)
     return product

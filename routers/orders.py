@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import Path, Query, status, APIRouter
 
 from dependencies import SessionDep
-from main_db import OrderCreate, OrderListResponse, OrderPublic
+from schemas import OrderCreate, OrderListResponse, OrderPublic
 
 from services import orders
 

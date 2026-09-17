@@ -1,5 +1,3 @@
-from main_db import Product, ProductCreate, ProductUpdate
-
 
 class ProductNotFoundException(Exception):
     def __init__(self, product_id: int)->None:

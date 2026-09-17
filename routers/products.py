@@ -3,7 +3,8 @@ from fastapi import Path, Depends, status, APIRouter, Response
 
 from dependencies import SessionDep
 
-from main_db import Product, ProductCreate, ProductPublic, ProductUpdate
+from models import Product
+from schemas import ProductCreate, ProductPublic, ProductUpdate
 from services import products
 
 router = APIRouter(
