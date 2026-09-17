@@ -23,7 +23,7 @@ def test_create_product(client):
     assert isinstance(data["id"], int)
 
 def test_create_product_duplicate_sku(client):
-    client.post(
+    first_response = client.post(
         "/products/",
         json = {
             "sku": "TEST-01",
@@ -33,7 +33,10 @@ def test_create_product_duplicate_sku(client):
             "description": "Test keyboard"
         },
     )
-    response = client.post(
+
+    assert first_response.status_code == 201
+
+    second_response = client.post(
         "/products/",
         json = {
             "sku": "TEST-01",
@@ -44,11 +47,12 @@ def test_create_product_duplicate_sku(client):
         },
     )
 
-    assert response.status_code == 409
+    assert second_response.status_code == 409
 
-    content = response.json()
-
-    assert content["code"] == "PRODUCT_SKU_EXISTS"
+    assert second_response.json() == {
+        "code": "PRODUCT_SKU_EXISTS",
+        "detail": "Product sku TEST-01 already exists"
+    }
 
 def test_create_product_invalid_price(client):
     response = client.post(
@@ -63,3 +67,10 @@ def test_create_product_invalid_price(client):
     )
 
     assert response.status_code == 422
+
+    products_response = client.get(
+        "/products/"
+    )
+
+    assert products_response.status_code == 200
+    assert products_response.json() == []
