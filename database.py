@@ -2,18 +2,17 @@ from sqlmodel import create_engine, SQLModel
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from sqlalchemy import event
-
-sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
+import models
+from config import settings
 
 connect_args = {
     "check_same_thread": False
 }
 
 engine = create_engine(
-    sqlite_url,
+    settings.database_url,
     connect_args=connect_args,
-    echo=True,
+    echo=settings.sql_echo,
 )
 
 @event.listens_for(engine, "connect")

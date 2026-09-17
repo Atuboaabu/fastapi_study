@@ -3,4 +3,5 @@
 .agents
 __pycache__
 database.db
+.env
 

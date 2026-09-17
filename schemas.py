@@ -27,7 +27,6 @@ class ProductCreate(SQLModel):
     sku: str = Field(
         min_length = 3,
         max_length = 50,
-        unique = True
     )
 
     name: str = Field(
@@ -50,7 +49,6 @@ class ProductPublic(SQLModel):
     sku: str = Field(
         min_length = 3,
         max_length = 50,
-        unique = True
     )
 
     name: str = Field(
