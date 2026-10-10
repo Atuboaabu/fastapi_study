@@ -34,3 +34,28 @@ def client(session: Session):
     yield client
 
     app.dependency_overrides.clear()
+
+@pytest.fixture
+def create_product(session: Session):
+    def _create_product(
+            *,
+            sku: str = "TEST-01",
+            name: str = "Keyboard",
+            price: float = 99.9,
+            stock: int = 10,
+            description: str | None = None
+    ) -> models.Product:
+        product = models.Product(
+            sku = sku,
+            name = name,
+            price = price,
+            stock = stock,
+            description = description
+        )
+
+        session.add(product)
+        session.commit()
+        session.refresh(product)
+        return product
+
+    return _create_product

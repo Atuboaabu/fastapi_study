@@ -47,17 +47,17 @@ def test_order_rollback_when_commit_fails(
 
         orders.create_order(order_data, session)
 
-        product_after = session.get(Product, product_id)
+    product_after = session.get(Product, product_id)
 
-        assert product_after is not None
-        assert product_after.stock == 10
+    assert product_after is not None
+    assert product_after.stock == 10
 
-        created_orders = session.exec(
-            select(Order)
-        ).all()
-        assert created_orders == []
+    created_orders = session.exec(
+        select(Order)
+    ).all()
+    assert created_orders == []
 
-        created_items = session.exec(
-            select(OrderItem)
-        ).all()
-        assert created_items == []
+    created_items = session.exec(
+        select(OrderItem)
+    ).all()
+    assert created_items == []

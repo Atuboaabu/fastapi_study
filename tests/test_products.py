@@ -74,3 +74,190 @@ def test_create_product_invalid_price(client):
 
     assert products_response.status_code == 200
     assert products_response.json() == []
+
+def test_get_product(
+        client,
+        create_product
+):
+    product = create_product()
+
+    assert product.id is not None
+
+    response = client.get(
+        f"/products/{product.id}"
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["id"] == product.id
+    assert data["sku"] == "TEST-01"
+    assert data["name"] == "Keyboard"
+    assert data["price"] == 99.9
+    assert data["stock"] == 10
+    assert data["description"] == None
+
+def test_get_product_not_found(
+        client
+):
+    response = client.get(
+        f"/products/9999"
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "code": "PRODUCT_NOT_FOUND",
+        "detail": f"Product 9999 not found" 
+    }
+
+def test_get_products(
+        client,
+        create_product
+):
+    create_product()
+    create_product(
+        sku = "TEST-02",
+        name = "Keyboard-2",
+        price = 999.9,
+        stock = 100,
+        description = "Test product 2"
+    )
+
+    response = client.get(
+        f"/products/"
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert len(data) == 2
+
+    product1 = data[0]
+    assert product1["sku"] == "TEST-01"
+    assert product1["name"] == "Keyboard"
+    assert product1["price"] == 99.9
+    assert product1["stock"] == 10
+    assert product1["description"] == None
+
+    product1 = data[1]
+    assert product1["sku"] == "TEST-02"
+    assert product1["name"] == "Keyboard-2"
+    assert product1["price"] == 999.9
+    assert product1["stock"] == 100
+    assert product1["description"] == "Test product 2"
+
+def test_patch_product(
+        client,
+        create_product
+):
+    product = create_product()
+
+    assert product.id is not None
+
+    response = client.patch(
+        f"/products/{product.id}",
+        json = {
+            "description": f"Patch product {product.id} test"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["id"] == product.id
+    assert data["sku"] == "TEST-01"
+    assert data["name"] == "Keyboard"
+    assert data["price"] == 99.9
+    assert data["stock"] == 10
+    assert data["description"] == f"Patch product {product.id} test"
+
+def test_put_product(
+        client,
+        create_product
+):
+    product = create_product()
+
+    assert product.id is not None
+
+    response = client.put(
+        f"/products/{product.id}",
+        json = {
+            "sku": "TEST-PUT-01",
+            "name": "Put-Keyboard",
+            "price": 999.9,
+            "stock": 20,
+            "description": "Test PUT keyboard"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["id"] == product.id
+    assert data["sku"] == "TEST-PUT-01"
+    assert data["name"] == "Put-Keyboard"
+    assert data["price"] == 999.9
+    assert data["stock"] == 20
+    assert data["description"] == "Test PUT keyboard"
+
+def test_delete_product(
+        client,
+        create_product
+):
+    product = create_product()
+
+    assert product.id is not None
+
+    response = client.delete(
+        f"/products/{product.id}"
+    )
+    assert response.status_code == 204
+
+    response = client.get(
+        f"/products/{product.id}"
+    )
+    assert response.status_code == 404
+
+def test_delete_product_in_use(
+        client,
+        create_product
+):
+    product = create_product()
+
+    assert product.id is not None
+
+    client.post(
+        "/orders/",
+        json = {
+            "items": [
+                {
+                    "product_id": product.id,
+                    "quantity": 1
+                }
+            ]
+        }
+    )
+
+    response = client.delete(
+        f"/products/{product.id}"
+    )
+    assert response.status_code == 409
+
+    assert response.json() == {
+        "code": "PRODUCT_IN_USE",
+        "detail": f"Product {product.id} in use"
+    }
+
+    response = client.get(
+        f"/products/{product.id}"
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["id"] == product.id
+    assert data["sku"] == "TEST-01"
+    assert data["name"] == "Keyboard"
+    assert data["price"] == 99.9
+    assert data["stock"] == 9
+    assert data["description"] == None
