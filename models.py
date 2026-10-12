@@ -73,3 +73,23 @@ class Product(SQLModel, table = True):
     order_items: list["OrderItem"] = Relationship(
         back_populates="product"
     )
+
+class User(SQLModel, table = True):
+    __tablename__ = "users"
+    id: int | None = Field(
+        default = None,
+        primary_key = True
+    )
+
+    username: str = Field(
+        min_length = 3,
+        max_length = 50,
+        unique = True,
+        index = True
+    )
+
+    hashed_password: str
+
+    is_active: bool = Field(
+        default = True
+    )

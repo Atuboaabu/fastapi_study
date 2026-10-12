@@ -1,8 +1,7 @@
 
 def test_create_order(
     client,
-    create_product,
-    create_order
+    create_product
 ):
     # 1、先创建一个 product
     product = create_product()
