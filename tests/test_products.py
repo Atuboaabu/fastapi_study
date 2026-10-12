@@ -143,11 +143,11 @@ def test_get_products(
     assert product1["stock"] == 10
     assert product1["description"] == None
 
-    product1 = products_by_sku["TEST-02"]
-    assert product1["name"] == "Keyboard-2"
-    assert product1["price"] == 999.9
-    assert product1["stock"] == 100
-    assert product1["description"] == "Test product 2"
+    product2 = products_by_sku["TEST-02"]
+    assert product2["name"] == "Keyboard-2"
+    assert product2["price"] == 999.9
+    assert product2["stock"] == 100
+    assert product2["description"] == "Test product 2"
 
 def test_patch_product(
         client,

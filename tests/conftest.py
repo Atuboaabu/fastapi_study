@@ -59,3 +59,20 @@ def create_product(session: Session):
         return product
 
     return _create_product
+
+@pytest.fixture
+def create_order(client):
+    def _create_order(
+        *,
+        items: list[dict]
+    ):
+        response = client.post(
+            "/orders/",
+            json = {
+                "items": items
+            }
+        )
+        assert response.status_code == 201
+        return response.json()
+    
+    return _create_order
