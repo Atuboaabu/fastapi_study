@@ -10,14 +10,20 @@ def test_create_order(
 
     product_id = product.id
     # 创建order
-    order_data = create_order(
-        items = [
-            {
-                "product_id": product_id,
-                "quantity": 2
-            }
-        ]
+    order_response = client.post(
+        "/orders/",
+        json = {
+            "items": [
+                {
+                    "product_id": product_id,
+                    "quantity": 2
+                }
+            ]
+        }
     )
+    assert order_response.status_code == 201
+
+    order_data = order_response.json()
 
     assert order_data["status"] == "pending"
     assert isinstance(order_data["id"], int)
@@ -444,7 +450,10 @@ def test_get_orders_filter_with_pagination(
     orders_items = orders_data["items"]
     assert len(orders_items) == 3
     assert all(
-        order["status"] == "pending"
+        any(
+            item["product_id"] == product2.id
+            for item in order["items"]
+        )
         for order in orders_items
     )
     
