@@ -22,6 +22,8 @@ def test_order_rollback_when_commit_fails(
     product_id = product.id
 
     def fail_commit():
+        session.flush()
+
         raise RuntimeError(
             "simulated commit failure"
         )

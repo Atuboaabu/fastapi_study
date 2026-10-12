@@ -132,15 +132,18 @@ def test_get_products(
     data = response.json()
     assert len(data) == 2
 
-    product1 = data[0]
-    assert product1["sku"] == "TEST-01"
+    products_by_sku = {
+        item["sku"]: item
+        for item in data
+    }
+
+    product1 = products_by_sku["TEST-01"]
     assert product1["name"] == "Keyboard"
     assert product1["price"] == 99.9
     assert product1["stock"] == 10
     assert product1["description"] == None
 
-    product1 = data[1]
-    assert product1["sku"] == "TEST-02"
+    product1 = products_by_sku["TEST-02"]
     assert product1["name"] == "Keyboard-2"
     assert product1["price"] == 999.9
     assert product1["stock"] == 100
@@ -226,7 +229,7 @@ def test_delete_product_in_use(
 
     assert product.id is not None
 
-    client.post(
+    order_response = client.post(
         "/orders/",
         json = {
             "items": [
@@ -237,6 +240,7 @@ def test_delete_product_in_use(
             ]
         }
     )
+    assert order_response.status_code == 201
 
     response = client.delete(
         f"/products/{product.id}"
