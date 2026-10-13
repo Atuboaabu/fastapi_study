@@ -1,7 +1,10 @@
+import jwt
 from sqlmodel import select
 
 from models import User
 from security import verify_password
+
+from config import settings
 
 def test_register_user_success(
     client,
@@ -70,3 +73,88 @@ def test_register_user_invalid_pswd(
     )
     
     assert user_response1.status_code == 422
+
+def test_login_success(
+    client
+):
+    register_response = client.post(
+        "/auth/register",
+        json = {
+            "username": "user1",
+            "password": "password123"
+        }
+    )
+    assert register_response.status_code == 201
+    user_data = register_response.json()
+    user_id = user_data["id"]
+
+    login_response = client.post(
+        "/auth/token",
+        data = {
+            "username": "user1",
+            "password": "password123"
+        }
+    )
+    assert login_response.status_code == 200
+    
+    token = login_response.json()
+    assert token["token_type"] == "beared"
+    assert isinstance(token["access_token"], str)
+    payload = jwt.decode(
+        token["access_token"],
+        settings.jwt_secret_key,
+        settings.jwt_algorithm
+    )
+    assert "sub" in payload
+    assert "exp" in payload
+    assert payload["sub"] == str(user_id)
+
+def test_login_wrong_pswd(
+    client
+):
+    register_response = client.post(
+        "/auth/register",
+        json = {
+            "username": "user1",
+            "password": "password123"
+        }
+    )
+    assert register_response.status_code == 201
+
+    login_response = client.post(
+        "/auth/token",
+        data = {
+            "username": "user1",
+            "password": "wrong_pswd"
+        }
+    )
+    assert login_response.status_code == 401
+    assert login_response.json() == {
+        "code": "INVALID_CREDENTIALS",
+        "detail": "Invalid username or password"
+    }
+
+def test_login_unknown_user(
+    client
+):
+    register_response = client.post(
+        "/auth/register",
+        json = {
+            "username": "user1",
+            "password": "password123"
+        }
+    )
+    assert register_response.status_code == 201
+
+    login_response = client.post(
+        "/auth/token",
+        data = {
+            "username": "unknown_user",
+            "password": "password123"
+        }
+    )
+    assert login_response.status_code == 401
+    assert login_response.json() == {
+        "code": "INVALID_CREDENTIALS",
+        "detail": "Invalid username or password"
+    }

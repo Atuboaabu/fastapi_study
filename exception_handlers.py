@@ -112,6 +112,9 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code = status.HTTP_401_UNAUTHORIZED,
             content = {
                 "code": "INVALID_CREDENTIALS",
-                "detail": f"Invalid username or password"
-            }
+                "detail": "Invalid username or password"
+            },
+            headers={
+                "WWW-Authenticate": "Bearer",
+            },
         )

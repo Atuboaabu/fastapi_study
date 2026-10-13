@@ -1,9 +1,12 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Depends
+from fastapi.security import OAuth2PasswordRequestForm
+from typing import Annotated
 
-from schemas import UserCreate, UserPublic
+from schemas import UserCreate, UserPublic, Token
 from dependencies import SessionDep
 
 from services import users
+from security import create_access_token
 
 router = APIRouter(
     prefix="/auth",
@@ -22,4 +25,28 @@ def register_user(
     return users.create_user(
         user_data,
         session
+    )
+
+@router.post(
+    "/token",
+    response_model=Token
+)
+def login_for_access_token(
+    form_data: Annotated[
+        OAuth2PasswordRequestForm,
+        Depends()
+    ],
+    session: SessionDep
+):
+    user = users.authenticate_user(
+        form_data.username,
+        form_data.password,
+        session
+    )
+    assert user.id is not None
+
+    access_token = create_access_token(str(user.id))
+    return Token(
+        access_token = access_token,
+        token_type = "beared"
     )

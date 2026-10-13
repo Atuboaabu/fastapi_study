@@ -102,3 +102,7 @@ class UserPublic(SQLModel):
     id: int
     username: str
     is_active: bool
+
+class Token(SQLModel):
+    access_token: str
+    token_type: str

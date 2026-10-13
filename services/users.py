@@ -39,15 +39,15 @@ def authenticate_user(
     username: str,
     password: str,
     session: Session
-) -> User | None:
+) -> User:
     statement = select(User).where(
         User.username == username
     )
     user = session.exec(statement).first()
     if user is None:
-        raise InvalidCredentialsException
+        raise InvalidCredentialsException()
     
     if not verify_password(password, user.hashed_password):
-        raise InvalidCredentialsException
+        raise InvalidCredentialsException()
     
     return user
