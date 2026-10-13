@@ -8,7 +8,8 @@ from exceptions import (
     OrderNotFoundException,
     ProductSkuExistsException,
     ProductInUseException,
-    UsernameExistsException)
+    UsernameExistsException,
+    InvalidCredentialsException)
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(DuplicateProductException)
@@ -99,5 +100,18 @@ def register_exception_handlers(app: FastAPI) -> None:
             content = {
                 "code": "USERNAME_EXISTS",
                 "detail": f"Username {exc.username} already exists"
+            }
+        )
+    
+    @app.exception_handler(InvalidCredentialsException)
+    async def invalid_credentials_handle(
+        request: Request,
+        exc: InvalidCredentialsException
+    ):
+        return JSONResponse(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            content = {
+                "code": "INVALID_CREDENTIALS",
+                "detail": f"Invalid username or password"
             }
         )

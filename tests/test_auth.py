@@ -1,6 +1,11 @@
+from sqlmodel import select
+
+from models import User
+from security import verify_password
 
 def test_register_user_success(
-    client
+    client,
+    session
 ):
     user_response = client.post(
         "/auth/register",
@@ -17,6 +22,15 @@ def test_register_user_success(
 
     assert "password" not in user_data
     assert "hashed_password" not in user_data
+
+    user = session.exec(
+        select(User).where(
+            User.username == "user1"
+        )
+    ).first()
+    assert user is not None
+    assert user.hashed_password != "password123"
+    assert verify_password("password123", user.hashed_password)
 
 def test_register_user_duplicatename(
     client
