@@ -48,5 +48,5 @@ def login_for_access_token(
     access_token = create_access_token(str(user.id))
     return Token(
         access_token = access_token,
-        token_type = "beared"
+        token_type = "bearer"
     )

@@ -9,7 +9,8 @@ from exceptions import (
     ProductSkuExistsException,
     ProductInUseException,
     UsernameExistsException,
-    InvalidCredentialsException)
+    InvalidCredentialsException,
+    InvalidTokenException)
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(DuplicateProductException)
@@ -113,6 +114,22 @@ def register_exception_handlers(app: FastAPI) -> None:
             content = {
                 "code": "INVALID_CREDENTIALS",
                 "detail": "Invalid username or password"
+            },
+            headers={
+                "WWW-Authenticate": "Bearer",
+            },
+        )
+    
+    @app.exception_handler(InvalidTokenException)
+    async def invalid_token_handle(
+        request: Request,
+        exc: InvalidTokenException
+    ):
+        return JSONResponse(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            content = {
+                "code": "INVALID_TOKEN",
+                "detail": "Invalid Token"
             },
             headers={
                 "WWW-Authenticate": "Bearer",

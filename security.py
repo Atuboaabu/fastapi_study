@@ -1,8 +1,10 @@
 import jwt
 from pwdlib import PasswordHash
 from datetime import datetime, timedelta, timezone
+from jwt.exceptions import InvalidTokenError
 
 from config import settings
+from exceptions import InvalidTokenException
 
 password_hash = PasswordHash.recommended()
 
@@ -32,7 +34,29 @@ def create_access_token(
     }
 
     return jwt.encode(
-        payload,
-        settings.jwt_secret_key,
-        settings.jwt_algorithm
+        payload = payload,
+        key = settings.jwt_secret_key,
+        algorithm = settings.jwt_algorithm
     )
+
+def decode_access_token(
+    token: str
+) -> int:
+    try:
+        payload = jwt.decode(
+            jwt = token,
+            key = settings.jwt_secret_key,
+            algorithms = settings.jwt_algorithm,
+            options = {
+                "require" : ["sub", "exp"]
+            }
+        )
+        subject = payload["sub"]
+
+        return int(subject)
+    except (
+        KeyError,
+        ValueError,
+        InvalidTokenError
+    ):
+        raise InvalidTokenException()

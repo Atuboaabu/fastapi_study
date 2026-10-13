@@ -98,12 +98,12 @@ def test_login_success(
     assert login_response.status_code == 200
     
     token = login_response.json()
-    assert token["token_type"] == "beared"
+    assert token["token_type"] == "bearer"
     assert isinstance(token["access_token"], str)
     payload = jwt.decode(
-        token["access_token"],
-        settings.jwt_secret_key,
-        settings.jwt_algorithm
+        jwt = token["access_token"],
+        key = settings.jwt_secret_key,
+        algorithms = [settings.jwt_algorithm]
     )
     assert "sub" in payload
     assert "exp" in payload
@@ -133,6 +133,7 @@ def test_login_wrong_pswd(
         "code": "INVALID_CREDENTIALS",
         "detail": "Invalid username or password"
     }
+    assert login_response.headers["www-authenticate"] == "Bearer"
 
 def test_login_unknown_user(
     client
@@ -158,3 +159,4 @@ def test_login_unknown_user(
         "code": "INVALID_CREDENTIALS",
         "detail": "Invalid username or password"
     }
+    assert login_response.headers["www-authenticate"] == "Bearer"
