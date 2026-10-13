@@ -8,7 +8,7 @@ def hash_password(
     return password_hash.hash(password)
 
 def verify_password(
-    plained_password: str,
+    plain_password: str,
     hashed_password: str
 ) -> bool:
-    return password_hash.verify(plained_password, hashed_password)
+    return password_hash.verify(plain_password, hashed_password)

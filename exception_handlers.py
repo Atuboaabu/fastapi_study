@@ -7,7 +7,8 @@ from exceptions import (
     InsufficientStockException,
     OrderNotFoundException,
     ProductSkuExistsException,
-    ProductInUseException)
+    ProductInUseException,
+    UsernameExistsException)
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(DuplicateProductException)
@@ -85,5 +86,18 @@ def register_exception_handlers(app: FastAPI) -> None:
             content = {
                 "code": "PRODUCT_IN_USE",
                 "detail": f"Product {exc.product_id} in use" 
+            }
+        )
+    
+    @app.exception_handler(UsernameExistsException)
+    async def username_exists_handle(
+        request: Request,
+        exc: UsernameExistsException
+    ):
+        return JSONResponse(
+            status_code = status.HTTP_409_CONFLICT,
+            content = {
+                "code": "USERNAME_EXISTS",
+                "detail": f"Username {exc.username} already exists"
             }
         )
