@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from schemas import UserPublic
-from dependencies import CurretUserDep
+from dependencies import ActiveUserDep
 
 router = APIRouter(
     prefix = "/users",
@@ -13,6 +13,6 @@ router = APIRouter(
     response_model = UserPublic
 )
 def get_me(
-    current_user: CurretUserDep
+    current_user: ActiveUserDep
 ):
     return current_user

@@ -6,7 +6,7 @@ from database import engine
 
 from models import User
 from security import decode_access_token
-from exceptions import InvalidTokenException
+from exceptions import InvalidTokenException, InactiveUserException
 
 def get_session():
     with Session(engine) as session:
@@ -31,4 +31,14 @@ def get_current_user(
     
     return user
 
-CurretUserDep = Annotated[User, Depends(get_current_user)]
+CurrentUserDep = Annotated[User, Depends(get_current_user)]
+
+def get_current_active_user(
+    current_user: CurrentUserDep
+) -> User:
+    if not current_user.is_active:
+        raise InactiveUserException()
+    
+    return current_user
+
+ActiveUserDep = Annotated[User, Depends(get_current_active_user)]

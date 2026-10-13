@@ -32,5 +32,6 @@ class InvalidCredentialsException(Exception):
 class InvalidTokenException(Exception):
     pass
 
-
+class InactiveUserException(Exception):
+    pass
 

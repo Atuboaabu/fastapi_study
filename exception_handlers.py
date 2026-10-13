@@ -10,7 +10,8 @@ from exceptions import (
     ProductInUseException,
     UsernameExistsException,
     InvalidCredentialsException,
-    InvalidTokenException)
+    InvalidTokenException,
+    InactiveUserException)
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(DuplicateProductException)
@@ -129,9 +130,22 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code = status.HTTP_401_UNAUTHORIZED,
             content = {
                 "code": "INVALID_TOKEN",
-                "detail": "Invalid Token"
+                "detail": "Token is invalid"
             },
             headers={
                 "WWW-Authenticate": "Bearer",
             },
+        )
+    
+    @app.exception_handler(InactiveUserException)
+    async def inactive_user_handle(
+        request: Request,
+        exc: InactiveUserException
+    ):
+        return JSONResponse(
+            status_code = status.HTTP_403_FORBIDDEN,
+            content = {
+                "code": "INACTIVE_USER",
+                "detail": "User is inactive"
+            }
         )
