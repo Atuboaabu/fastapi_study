@@ -1,5 +1,8 @@
 
-def test_create_product(client):
+def test_create_product(
+    client,
+    admin_headers
+):
     response = client.post(
         "/products/",
         json = {
@@ -9,6 +12,7 @@ def test_create_product(client):
             "stock": 10,
             "description": "Test keyboard"
         },
+        headers=admin_headers
     )
 
     assert response.status_code == 201
@@ -22,7 +26,50 @@ def test_create_product(client):
     assert data["description"] == "Test keyboard"
     assert isinstance(data["id"], int)
 
-def test_create_product_duplicate_sku(client):
+def test_create_product_no_admin_headers(
+    client,
+    admin_headers
+):
+    response = client.post(
+        "/products/",
+        json = {
+            "sku": "TEST-01",
+            "name": "Keyboard",
+            "price": 99.9,
+            "stock": 10,
+            "description": "Test keyboard"
+        }
+    )
+
+    assert response.status_code == 401
+
+def test_create_product_customer_headers(
+    client,
+    customer_headers
+):
+    response = client.post(
+        "/products/",
+        json = {
+            "sku": "TEST-01",
+            "name": "Keyboard",
+            "price": 99.9,
+            "stock": 10,
+            "description": "Test keyboard"
+        },
+        headers = customer_headers
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "code": "FORBIDDEN",
+        "detail": "Insufficient permissions"
+    }
+
+
+def test_create_product_duplicate_sku(
+    client,
+    admin_headers
+):
     first_response = client.post(
         "/products/",
         json = {
@@ -32,6 +79,7 @@ def test_create_product_duplicate_sku(client):
             "stock": 10,
             "description": "Test keyboard"
         },
+        headers = admin_headers
     )
 
     assert first_response.status_code == 201
@@ -45,6 +93,7 @@ def test_create_product_duplicate_sku(client):
             "stock": 20,
             "description": "Test keyboard 2"
         },
+        headers = admin_headers
     )
 
     assert second_response.status_code == 409
@@ -54,7 +103,10 @@ def test_create_product_duplicate_sku(client):
         "detail": "Product sku TEST-01 already exists"
     }
 
-def test_create_product_invalid_price(client):
+def test_create_product_invalid_price(
+    client,
+    admin_headers
+):
     response = client.post(
         "/products/",
         json = {
@@ -64,6 +116,7 @@ def test_create_product_invalid_price(client):
             "stock": 20,
             "description": "Test keyboard 2"
         },
+        headers = admin_headers
     )
 
     assert response.status_code == 422
@@ -150,8 +203,9 @@ def test_get_products(
     assert product2["description"] == "Test product 2"
 
 def test_patch_product(
-        client,
-        create_product
+    client,
+    create_product,
+    admin_headers
 ):
     product = create_product()
 
@@ -161,7 +215,8 @@ def test_patch_product(
         f"/products/{product.id}",
         json = {
             "description": f"Patch product {product.id} test"
-        }
+        },
+        headers = admin_headers
     )
 
     assert response.status_code == 200
@@ -175,8 +230,9 @@ def test_patch_product(
     assert data["description"] == f"Patch product {product.id} test"
 
 def test_put_product(
-        client,
-        create_product
+    client,
+    create_product,
+    admin_headers
 ):
     product = create_product()
 
@@ -190,7 +246,8 @@ def test_put_product(
             "price": 999.9,
             "stock": 20,
             "description": "Test PUT keyboard"
-        }
+        },
+        headers=admin_headers
     )
 
     assert response.status_code == 200
@@ -204,15 +261,17 @@ def test_put_product(
     assert data["description"] == "Test PUT keyboard"
 
 def test_delete_product(
-        client,
-        create_product
+    client,
+    create_product,
+    admin_headers
 ):
     product = create_product()
 
     assert product.id is not None
 
     response = client.delete(
-        f"/products/{product.id}"
+        f"/products/{product.id}",
+        headers = admin_headers
     )
     assert response.status_code == 204
 
@@ -222,8 +281,9 @@ def test_delete_product(
     assert response.status_code == 404
 
 def test_delete_product_in_use(
-        client,
-        create_product
+    client,
+    create_product,
+    admin_headers
 ):
     product = create_product()
 
@@ -238,12 +298,14 @@ def test_delete_product_in_use(
                     "quantity": 1
                 }
             ]
-        }
+        },
+        headers = admin_headers
     )
     assert order_response.status_code == 201
 
     response = client.delete(
-        f"/products/{product.id}"
+        f"/products/{product.id}",
+        headers = admin_headers
     )
     assert response.status_code == 409
 

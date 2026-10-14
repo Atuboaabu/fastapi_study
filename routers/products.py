@@ -1,7 +1,7 @@
 from typing import Annotated
 from fastapi import Path, Depends, status, APIRouter, Response
 
-from dependencies import SessionDep
+from dependencies import SessionDep, AdminUserDep
 
 from models import Product
 from schemas import ProductCreate, ProductPublic, ProductUpdate
@@ -26,7 +26,8 @@ ProductDep = Annotated[Product, Depends(get_product_or_404)]
 )
 def create_product(
     product: ProductCreate,
-    session: SessionDep
+    session: SessionDep,
+    admin_user: AdminUserDep
 ):
     return products.create_product(
         product,
@@ -58,7 +59,8 @@ def get_product(product: ProductDep):
 )
 def del_product(
     product: ProductDep,
-    session: SessionDep
+    session: SessionDep,
+    admin_user: AdminUserDep
 ):
     products.del_product(product, session)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -71,7 +73,8 @@ def del_product(
 def patch_product(
     update_product: ProductUpdate,
     product: ProductDep,
-    session: SessionDep
+    session: SessionDep,
+    admin_user: AdminUserDep
 ):
     return products.patch_product(
         update_product,
@@ -87,7 +90,8 @@ def patch_product(
 def put_product(
     update_product: ProductCreate,
     product: ProductDep,
-    session: SessionDep
+    session: SessionDep,
+    admin_user: AdminUserDep
 ):
     product = products.put_product(
         update_product,

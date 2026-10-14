@@ -377,6 +377,7 @@ def test_get_admin_inactive(
     user = session.get(User, user_id)
     assert user is not None
     user.is_active = False
+    user.role = "admin"
     session.commit()
 
     login_response = client.post(

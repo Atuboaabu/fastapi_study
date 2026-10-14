@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from main import app
 from dependencies import get_session
 import models
+from security import hash_password, create_access_token
 
 @pytest.fixture
 def session():
@@ -89,3 +90,45 @@ def create_order(client):
         return response.json()
     
     return _create_order
+
+@pytest.fixture
+def admin_headers(session: Session):
+    user = models.User(
+        username = "admin",
+        hashed_password = hash_password("password123"),
+        role = "admin"
+    )
+
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    assert user.id is not None
+
+    token = create_access_token(
+        str(user.id)
+    )
+    return {
+        "Authorization": f"Bearer {token}"
+    }
+
+@pytest.fixture
+def customer_headers(session: Session):
+    user = models.User(
+        username = "customer",
+        hashed_password = hash_password("password123"),
+        role = "customer"
+    )
+
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    assert user.id is not None
+
+    token = create_access_token(
+        str(user.id)
+    )
+    return {
+        "Authorization": f"Bearer {token}"
+    }
