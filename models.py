@@ -93,3 +93,8 @@ class User(SQLModel, table = True):
     is_active: bool = Field(
         default = True
     )
+
+    role: str = Field(
+        default = "customer",
+        max_length = 20
+    )

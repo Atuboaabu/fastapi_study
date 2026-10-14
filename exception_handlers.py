@@ -11,7 +11,8 @@ from exceptions import (
     UsernameExistsException,
     InvalidCredentialsException,
     InvalidTokenException,
-    InactiveUserException)
+    InactiveUserException,
+    ForbiddenException)
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(DuplicateProductException)
@@ -145,7 +146,22 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code = status.HTTP_403_FORBIDDEN,
             content = {
-                "code": "INACTIVE_USER",
+                "code": "USER_INACTIVE",
                 "detail": "User is inactive"
             }
         )
+    
+    @app.exception_handler(ForbiddenException)
+    async def forbidden_handle(
+        request: Request,
+        exc: ForbiddenException
+    ):
+        return JSONResponse(
+            status_code = status.HTTP_403_FORBIDDEN,
+            content = {
+                "code": "FORBIDDEN",
+                "detail": "Insufficient permissions"
+            }
+        )
+        
+    

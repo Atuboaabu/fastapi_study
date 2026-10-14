@@ -6,7 +6,7 @@ from database import engine
 
 from models import User
 from security import decode_access_token
-from exceptions import InvalidTokenException, InactiveUserException
+from exceptions import InvalidTokenException, InactiveUserException, ForbiddenException
 
 def get_session():
     with Session(engine) as session:
@@ -42,3 +42,13 @@ def get_current_active_user(
     return current_user
 
 ActiveUserDep = Annotated[User, Depends(get_current_active_user)]
+
+def get_current_admin_user(
+    active_user: ActiveUserDep
+) -> User:
+    if active_user.role != "admin":
+        raise ForbiddenException()
+    
+    return active_user
+
+AdminUserDep = Annotated[User, Depends(get_current_admin_user)]

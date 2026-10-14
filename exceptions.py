@@ -35,3 +35,6 @@ class InvalidTokenException(Exception):
 class InactiveUserException(Exception):
     pass
 
+class ForbiddenException(Exception):
+    pass
+
