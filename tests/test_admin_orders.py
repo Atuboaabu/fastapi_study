@@ -15,7 +15,7 @@ def test_admin_get_all_orders(
         role = "customer"
     )
     i = 1
-    while i < 6:
+    while i < 7:
         order = create_order(
             items = [
                 {
@@ -52,7 +52,7 @@ def test_admin_get_all_orders(
 
     user1_orders_data = user1_orders.json()
     user1_orders_items = user1_orders_data["items"]
-    assert len(user1_orders_items) == 5
+    assert len(user1_orders_items) == 6
 
     user2_orders = client.get(
         "/orders/",
@@ -62,7 +62,7 @@ def test_admin_get_all_orders(
 
     user2_orders_data = user2_orders.json()
     user2_orders_items = user2_orders_data["items"]
-    assert len(user2_orders_items) == 5
+    assert len(user2_orders_items) == 4
 
     admin, admin_headers = create_auth_user(
         username = "admin_user",
@@ -82,7 +82,7 @@ def test_admin_get_all_orders(
 
     admin_orders = client.get(
         "/orders/",
-        headers = headers2
+        headers = admin_headers
     )
     assert admin_orders.status_code == 200
 
@@ -147,6 +147,16 @@ def test_admin_get_others_order(
         username = "admin_user",
         role = "admin"
     )
+
+    admin_get_response = client.get(
+        f"/orders/{order["id"]}",
+        headers = admin_headers
+    )
+    assert admin_get_response.status_code == 404
+    assert admin_get_response.json() == {
+        "code": "ORDER_NOT_FOUND",
+        "detail": f"Order {order["id"]} not found" 
+    }
 
     admin_order = client.get(
         f"/admin/orders/{order["id"]}",
