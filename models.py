@@ -36,9 +36,16 @@ class Order(SQLModel, table = True):
         default=None,
         primary_key = True
     )
+    user_id: int = Field(
+        foreign_key = "users.id",
+        index = True
+    )
     status: str = Field(
         default="pending",
         max_length=20
+    )
+    user: "User" = Relationship(
+        back_populates = "orders"
     )
     items: list["OrderItem"] = Relationship(
         back_populates="order"
@@ -97,4 +104,8 @@ class User(SQLModel, table = True):
     role: str = Field(
         default = "customer",
         max_length = 20
+    )
+
+    orders: list["Order"] = Relationship(
+        back_populates = "user"
     )

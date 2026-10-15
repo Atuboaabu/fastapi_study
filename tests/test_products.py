@@ -27,8 +27,7 @@ def test_create_product(
     assert isinstance(data["id"], int)
 
 def test_create_product_no_admin_headers(
-    client,
-    admin_headers
+    client
 ):
     response = client.post(
         "/products/",

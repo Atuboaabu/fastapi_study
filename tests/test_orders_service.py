@@ -1,8 +1,9 @@
 import pytest
-from models import Product, Order, OrderItem
+from models import Product, Order, OrderItem, User
 from schemas import OrderCreate, OrderItemCreate
 from services import orders
 from sqlmodel import select
+from security import hash_password
 
 def test_order_rollback_when_commit_fails(
     session,
@@ -19,7 +20,21 @@ def test_order_rollback_when_commit_fails(
     session.commit()
     session.refresh(product)
 
+    assert product.id is not None
     product_id = product.id
+
+    user = User(
+        username = "customer",
+        hashed_password = hash_password("password123"),
+        role = "customer"
+    )
+
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    assert user.id is not None
+    user_id = user.id
 
     def fail_commit():
         session.flush()
@@ -47,7 +62,7 @@ def test_order_rollback_when_commit_fails(
             ]
         )
 
-        orders.create_order(order_data, session)
+        orders.create_order(order_data, user_id, session)
 
     product_after = session.get(Product, product_id)
 

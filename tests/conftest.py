@@ -78,13 +78,15 @@ def create_product(session: Session):
 def create_order(client):
     def _create_order(
         *,
-        items: list[dict]
+        items: list[dict],
+        headers: dict
     ):
         response = client.post(
             "/orders/",
             json = {
                 "items": items
-            }
+            },
+            headers = headers
         )
         assert response.status_code == 201
         return response.json()

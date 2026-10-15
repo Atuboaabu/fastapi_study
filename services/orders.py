@@ -10,6 +10,7 @@ from exceptions import ProductNotFoundException, DuplicateProductException, Insu
 
 def create_order(
     order_data: OrderCreate,
+    user_id: int,
     session: Session
 ) -> Order:
     product_ids = [
@@ -34,7 +35,8 @@ def create_order(
 
     try:
         order = Order(
-            status="pending"
+            status="pending",
+            user_id = user_id
         )
         session.add(order)
         # insert order 但不 commit, 得到 order_id
@@ -66,9 +68,15 @@ def create_order(
 
 def get_order(
     order_id: int,
+    user_id: int,
     session: Session
 ) -> Order:
-    order = session.get(Order, order_id)
+    statement = select(Order).where(
+        Order.id == order_id
+    ).where(
+        Order.user_id == user_id
+    )
+    order = session.exec(statement).first()
 
     if order is None:
         raise OrderNotFoundException(order_id)
@@ -77,6 +85,7 @@ def get_order(
 
 def get_orders(
     session: Session,
+    user_id: int,
     product_id: int | None = None,
     status_filter: str | None = None,
     sort_order: Literal["asc", "desc"] = "desc",
@@ -87,6 +96,9 @@ def get_orders(
     count_statement = select(
         func.count(distinct(Order.id))
     ).select_from(Order)
+
+    statement = statement.where(Order.user_id == user_id)
+    count_statement = count_statement.where(Order.user_id == user_id)
 
     if product_id is not None:
         statement = statement.join(OrderItem).where(OrderItem.product_id == product_id).distinct()

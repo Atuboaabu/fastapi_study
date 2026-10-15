@@ -1,7 +1,8 @@
 
 def test_create_order(
     client,
-    create_product
+    create_product,
+    customer_headers
 ):
     # 1、先创建一个 product
     product = create_product()
@@ -18,7 +19,8 @@ def test_create_order(
                     "quantity": 2
                 }
             ]
-        }
+        },
+        headers = customer_headers
     )
     assert order_response.status_code == 201
 
@@ -45,7 +47,8 @@ def test_create_order(
 
 def test_create_order_duplicate_product(
     client,
-    create_product
+    create_product,
+    customer_headers
 ):
     # 1、先创建一个 product
     product = create_product()
@@ -66,7 +69,8 @@ def test_create_order_duplicate_product(
                     "quantity": 4
                 }
             ]
-        }
+        },
+        headers = customer_headers
     )
     
     assert order_response.status_code == 400
@@ -83,12 +87,16 @@ def test_create_order_duplicate_product(
 
     # get orders 判断没有创建order
     get_orders_response = client.get(
-        "/orders/"
+        "/orders/",
+        headers = customer_headers
     )
     orders_info = get_orders_response.json()
     assert len(orders_info["items"]) == 0
 
-def test_create_order_no_product(client):
+def test_create_order_no_product(
+    client,
+    customer_headers
+):
     # 创建order
     order_response = client.post(
         "/orders/",
@@ -99,7 +107,8 @@ def test_create_order_no_product(client):
                     "quantity": 2
                 }
             ]
-        }
+        },
+        headers = customer_headers
     )
     
     assert order_response.status_code == 404
@@ -110,14 +119,16 @@ def test_create_order_no_product(client):
 
     # get orders 判断没有创建order
     get_orders_response = client.get(
-        "/orders/"
+        "/orders/",
+        headers = customer_headers
     )
     orders_info = get_orders_response.json()
     assert len(orders_info["items"]) == 0
 
 def test_create_order_insufficient_stock(
     client,
-    create_product
+    create_product,
+    customer_headers
 ):
     # 1、先创建一个 product
     product = create_product()
@@ -134,7 +145,8 @@ def test_create_order_insufficient_stock(
                     "quantity": 12
                 }
             ]
-        }
+        },
+        headers = customer_headers
     )
     
     assert order_response.status_code == 409
@@ -151,7 +163,8 @@ def test_create_order_insufficient_stock(
 
     # get orders 判断没有创建order
     get_orders_response = client.get(
-        "/orders/"
+        "/orders/",
+        headers = customer_headers
     )
     orders_info = get_orders_response.json()
     assert len(orders_info["items"]) == 0
@@ -159,12 +172,14 @@ def test_create_order_insufficient_stock(
 def test_get_orders_default_sort_desc(
     client,
     create_product,
-    create_order
+    create_order,
+    customer_headers
 ):
     product = create_product()
     assert product.id is not None
 
     product_id = product.id
+    headers = customer_headers
 
     order1 = create_order(
         items = [
@@ -172,7 +187,8 @@ def test_get_orders_default_sort_desc(
                 "product_id": product_id,
                 "quantity": 2
             }
-        ]
+        ],
+        headers = headers
     )
 
     order2 = create_order(
@@ -181,10 +197,14 @@ def test_get_orders_default_sort_desc(
                 "product_id": product_id,
                 "quantity": 4
             }
-        ]
+        ],
+        headers = headers
     )
 
-    orders = client.get("/orders/")
+    orders = client.get(
+        "/orders/",
+        headers = headers
+    )
     assert orders.status_code == 200
 
     orders_data = orders.json()
@@ -205,12 +225,14 @@ def test_get_orders_default_sort_desc(
 def test_get_orders_sort_asc(
     client,
     create_product,
-    create_order
+    create_order,
+    customer_headers
 ):
     product = create_product()
     assert product.id is not None
 
     product_id = product.id
+    headers = customer_headers
 
     order1 = create_order(
         items = [
@@ -218,7 +240,8 @@ def test_get_orders_sort_asc(
                 "product_id": product_id,
                 "quantity": 2
             }
-        ]
+        ],
+        headers = headers
     )
 
     order2 = create_order(
@@ -227,11 +250,13 @@ def test_get_orders_sort_asc(
                 "product_id": product_id,
                 "quantity": 4
             }
-        ]
+        ],
+        headers = headers
     )
 
     orders = client.get(
-        "/orders/?sort_order=asc"
+        "/orders/?sort_order=asc",
+        headers = headers
     )
     assert orders.status_code == 200
 
@@ -253,12 +278,14 @@ def test_get_orders_sort_asc(
 def test_get_orders_pagination(
     client,
     create_product,
-    create_order
+    create_order,
+    customer_headers
 ):
     product = create_product(stock=100)
     assert product.id is not None
 
     product_id = product.id
+    headers = customer_headers
 
     i = 1
     while i < 11:
@@ -268,12 +295,14 @@ def test_get_orders_pagination(
                     "product_id": product_id,
                     "quantity": i
                 }
-            ]
+            ],
+            headers = headers
         )
         i += 1
 
     orders = client.get(
-        "/orders/?sort_order=asc&offset=2&limit=3"
+        "/orders/?sort_order=asc&offset=2&limit=3",
+        headers = headers
     )
     assert orders.status_code == 200
 
@@ -291,10 +320,13 @@ def test_get_orders_pagination(
 def test_get_orders_filter_by_product(
     client,
     create_product,
-    create_order
+    create_order,
+    customer_headers
 ):
     product1 = create_product(stock=100)
     assert product1.id is not None
+
+    headers = customer_headers
 
     i = 1
     while i < 6:
@@ -304,7 +336,8 @@ def test_get_orders_filter_by_product(
                     "product_id": product1.id,
                     "quantity": i
                 }
-            ]
+            ],
+            headers = headers
         )
         i += 1
     
@@ -324,12 +357,14 @@ def test_get_orders_filter_by_product(
                     "product_id": product2.id,
                     "quantity": i
                 }
-            ]
+            ],
+            headers = headers
         )
         i += 1
 
     orders = client.get(
-        f"/orders/?product_id={product2.id}"
+        f"/orders/?product_id={product2.id}",
+        headers = headers
     )
     assert orders.status_code == 200
 
@@ -353,10 +388,13 @@ def test_get_orders_filter_by_product(
 def test_get_orders_filter_by_status(
     client,
     create_product,
-    create_order
+    create_order,
+    customer_headers
 ):
     product = create_product(stock=100)
     assert product.id is not None
+
+    headers = customer_headers
 
     i = 1
     while i < 11:
@@ -366,12 +404,14 @@ def test_get_orders_filter_by_status(
                     "product_id": product.id,
                     "quantity": i
                 }
-            ]
+            ],
+            headers = headers
         )
         i += 1
 
     orders = client.get(
-        f"/orders/?status=pending"
+        f"/orders/?status=pending",
+        headers = headers
     )
     assert orders.status_code == 200
 
@@ -388,7 +428,8 @@ def test_get_orders_filter_by_status(
     assert orders_data["limit"] == 20
 
     orders = client.get(
-        f"/orders/?status=cancelled"
+        f"/orders/?status=cancelled",
+        headers = headers
     )
     assert orders.status_code == 200
 
@@ -403,10 +444,13 @@ def test_get_orders_filter_by_status(
 def test_get_orders_filter_with_pagination(
     client,
     create_product,
-    create_order
+    create_order,
+    customer_headers
 ):
     product1 = create_product(stock=100)
     assert product1.id is not None
+
+    headers = customer_headers
 
     i = 1
     while i < 6:
@@ -416,7 +460,8 @@ def test_get_orders_filter_with_pagination(
                     "product_id": product1.id,
                     "quantity": i
                 }
-            ]
+            ],
+            headers = headers
         )
         i += 1
     
@@ -436,12 +481,14 @@ def test_get_orders_filter_with_pagination(
                     "product_id": product2.id,
                     "quantity": i
                 }
-            ]
+            ],
+            headers = headers
         )
         i += 1
 
     orders = client.get(
-        f"/orders/?product_id={product2.id}&limit=3"
+        f"/orders/?product_id={product2.id}&limit=3",
+        headers = headers
     )
     assert orders.status_code == 200
 
@@ -461,23 +508,39 @@ def test_get_orders_filter_with_pagination(
     assert orders_data["limit"] == 3
 
 def test_get_orders_invalid_sort_order(
-    client
+    client,
+    customer_headers
 ):
-    response = client.get("/orders/?sort_order=random")
+    response = client.get(
+        "/orders/?sort_order=random",
+        headers = customer_headers
+    )
 
     assert response.status_code == 422
 
 def test_get_orders_invalid_pagination(
-    client
+    client,
+    customer_headers
 ):
-    response = client.get("/orders/?offset=-1")
+    headers = customer_headers
+
+    response = client.get(
+        "/orders/?offset=-1",
+        headers = headers
+    )
 
     assert response.status_code == 422
 
-    response = client.get("/orders/?limit=0")
+    response = client.get(
+        "/orders/?limit=0",
+        headers = headers
+    )
 
     assert response.status_code == 422
 
-    response = client.get("/orders/?limit=101")
+    response = client.get(
+        "/orders/?limit=101",
+        headers = headers
+    )
 
     assert response.status_code == 422

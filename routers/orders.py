@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import Path, Query, status, APIRouter
 
-from dependencies import SessionDep
+from dependencies import SessionDep, ActiveUserDep
 from schemas import OrderCreate, OrderListResponse, OrderPublic
 
 from services import orders
@@ -20,9 +20,10 @@ router = APIRouter(
 )
 def create_order(
     order_data: OrderCreate,
+    user: ActiveUserDep,
     session: SessionDep
 ):
-    return orders.create_order(order_data, session)
+    return orders.create_order(order_data, user.id, session)
 
 # GET "/orders/{order_id}"
 @router.get(
@@ -31,9 +32,10 @@ def create_order(
 )
 def get_order(
     order_id: Annotated[int, Path(gt=0)],
+    user: ActiveUserDep,
     session: SessionDep
 ):
-    return orders.get_order(order_id, session)
+    return orders.get_order(order_id, user.id, session)
 
 # GET "/orders/"
 @router.get(
@@ -41,6 +43,7 @@ def get_order(
     response_model=OrderListResponse
 )
 def get_orders(
+    user: ActiveUserDep,
     session: SessionDep,
     product_id: Annotated[int | None, Query(gt=0)] = None,
     status_filter: Annotated[str | None, Query(alias="status", max_length=20)] = None,
@@ -50,6 +53,7 @@ def get_orders(
 ):
     order_list, count = orders.get_orders(
         session,
+        user.id,
         product_id,
         status_filter,
         sort_order,
