@@ -23,6 +23,8 @@ def create_order(
     user: ActiveUserDep,
     session: SessionDep
 ):
+    assert user.id is not None
+
     return orders.create_order(order_data, user.id, session)
 
 # GET "/orders/{order_id}"
@@ -35,7 +37,9 @@ def get_order(
     user: ActiveUserDep,
     session: SessionDep
 ):
-    return orders.get_order(order_id, user.id, session)
+    assert user.id is not None
+
+    return orders.get_order_for_user(order_id, user.id, session)
 
 # GET "/orders/"
 @router.get(
@@ -51,7 +55,9 @@ def get_orders(
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ):
-    order_list, count = orders.get_orders(
+    assert user.id is not None
+
+    order_list, count = orders.get_orders_for_user(
         session,
         user.id,
         product_id,

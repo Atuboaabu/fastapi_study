@@ -66,7 +66,7 @@ def create_order(
     
     return order
 
-def get_order(
+def get_order_for_user(
     order_id: int,
     user_id: int,
     session: Session
@@ -83,7 +83,22 @@ def get_order(
 
     return order
 
-def get_orders(
+def get_order_by_id(
+    order_id: int,
+    session: Session
+) -> Order:
+    statement = select(Order).where(
+        Order.id == order_id
+    )
+
+    order = session.exec(statement).first()
+
+    if order is None:
+        raise OrderNotFoundException(order_id)
+
+    return order
+
+def get_orders_for_user(
     session: Session,
     user_id: int,
     product_id: int | None = None,
@@ -99,6 +114,43 @@ def get_orders(
 
     statement = statement.where(Order.user_id == user_id)
     count_statement = count_statement.where(Order.user_id == user_id)
+
+    if product_id is not None:
+        statement = statement.join(OrderItem).where(OrderItem.product_id == product_id).distinct()
+        count_statement = count_statement.join(OrderItem).where(OrderItem.product_id == product_id)
+    
+    if status_filter is not None:
+        statement = statement.where(Order.status == status_filter)
+        count_statement = count_statement.where(Order.status == status_filter)
+    
+    if sort_order == "asc":
+        statement = statement.order_by(Order.id.asc())
+    else:
+        statement = statement.order_by(Order.id.desc())
+    
+    statement = (statement
+                 .offset(offset)
+                 .limit(limit)
+                 .options(
+                    selectinload(Order.items)
+        )
+    )
+    orders = session.exec(statement).all()
+    count = session.exec(count_statement).one()
+    return list(orders), count
+
+def get_all_orders(
+    session: Session,
+    product_id: int | None = None,
+    status_filter: str | None = None,
+    sort_order: Literal["asc", "desc"] = "desc",
+    offset: int = 0,
+    limit: int = 20,
+) -> tuple[list[Order], int]:
+    statement = select(Order)
+    count_statement = select(
+        func.count(distinct(Order.id))
+    ).select_from(Order)
 
     if product_id is not None:
         statement = statement.join(OrderItem).where(OrderItem.product_id == product_id).distinct()

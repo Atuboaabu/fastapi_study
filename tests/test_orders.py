@@ -544,3 +544,79 @@ def test_get_orders_invalid_pagination(
     )
 
     assert response.status_code == 422
+
+def test_get_orders_ownership(
+    client,
+    create_product,
+    create_order,
+    create_auth_user
+):
+    product = create_product(stock=100)
+    assert product.id is not None
+
+    product_id = product.id
+    user1, headers1 = create_auth_user(
+        username = "user1"
+    )
+
+    i = 1
+    while i < 4:
+        order = create_order(
+            items = [
+                {
+                    "product_id": product_id,
+                    "quantity": i
+                }
+            ],
+            headers = headers1
+        )
+        i += 1
+
+    user2, headers2 = create_auth_user(
+        username = "user2"
+    )
+    while i < 7:
+        order = create_order(
+            items = [
+                {
+                    "product_id": product_id,
+                    "quantity": i
+                }
+            ],
+            headers = headers2
+        )
+        i += 1
+
+    user1_orders = client.get(
+        "/orders/?sort_order=asc",
+        headers = headers1
+    )
+    assert user1_orders.status_code == 200
+
+    user1_orders_data = user1_orders.json()
+    user1_orders_items = user1_orders_data["items"]
+    assert len(user1_orders_items) == 3
+    assert user1_orders_items[0]["items"][0]["quantity"] == 1
+    assert user1_orders_items[1]["items"][0]["quantity"] == 2
+    assert user1_orders_items[2]["items"][0]["quantity"] == 3
+    
+    assert user1_orders_data["total"] == 3
+    assert user1_orders_data["offset"] == 0
+    assert user1_orders_data["limit"] == 20
+
+    user2_orders = client.get(
+        "/orders/?sort_order=asc",
+        headers = headers2
+    )
+    assert user2_orders.status_code == 200
+
+    user2_orders_data = user2_orders.json()
+    user2_orders_items = user2_orders_data["items"]
+    assert len(user2_orders_items) == 3
+    assert user2_orders_items[0]["items"][0]["quantity"] == 4
+    assert user2_orders_items[1]["items"][0]["quantity"] == 5
+    assert user2_orders_items[2]["items"][0]["quantity"] == 6
+    
+    assert user2_orders_data["total"] == 3
+    assert user2_orders_data["offset"] == 0
+    assert user2_orders_data["limit"] == 20

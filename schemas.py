@@ -23,6 +23,18 @@ class OrderListResponse(SQLModel):
     offset: int
     limit: int
 
+class AdminOrderPublic(SQLModel):
+    id: int
+    user_id: int
+    status: str
+    items: list[OrderItemPublic]
+
+class AdminOrderListResponse(SQLModel):
+    items: list[AdminOrderPublic]
+    total: int
+    offset: int
+    limit: int
+
 class ProductCreate(SQLModel):
     sku: str = Field(
         min_length = 3,

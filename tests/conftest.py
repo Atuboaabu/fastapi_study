@@ -134,3 +134,34 @@ def customer_headers(session: Session):
     return {
         "Authorization": f"Bearer {token}"
     }
+
+@pytest.fixture
+def create_auth_user(session):
+    def _create_auth_user(
+        *,
+        username: str,
+        role: str = "customer"
+    ):
+        user = models.User(
+            username = username,
+            hashed_password = hash_password(
+                "password123"
+            ),
+            role = role,
+        )
+
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        assert user.id is not None
+        access_token = create_access_token(
+            str(user.id)
+        )
+
+        headers = {
+            "Authorization": f"Bearer {access_token}"
+        }
+
+        return user, headers
+    return _create_auth_user
