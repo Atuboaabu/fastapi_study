@@ -88,7 +88,7 @@ def test_admin_get_all_orders(
         "detail": "Insufficient permissions"
     }
 
-def test_admin_get_oters_order(
+def test_admin_get_others_order(
     client,
     create_product,
     create_auth_user,
@@ -136,7 +136,7 @@ def test_admin_get_oters_order(
     assert order_data["user_id"] == user1.id
     
     user2_get_admin_order_response = client.get(
-        "/admin/orders/",
+        f"/admin/orders/{order["id"]}",
         headers = headers2
     )
     assert user2_get_admin_order_response.status_code == 403

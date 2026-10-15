@@ -620,3 +620,41 @@ def test_get_orders_ownership(
     assert user2_orders_data["total"] == 3
     assert user2_orders_data["offset"] == 0
     assert user2_orders_data["limit"] == 20
+
+def get_others_order(
+    client,
+    create_product,
+    create_order,
+    create_auth_user
+):
+    product = create_product(stock=100)
+    assert product.id is not None
+
+    product_id = product.id
+    user1, headers1 = create_auth_user(
+        username = "user1"
+    )
+
+    order = create_order(
+        items = [
+            {
+                "product_id": product_id,
+                "quantity": 12
+            }
+        ],
+        headers = headers1
+    )
+    assert isinstance(order["id"], int)
+
+    user2, headers2 = create_auth_user(
+        username = "user2"
+    )
+    user2_orders = client.get(
+        f"/orders/{order["id"]}",
+        headers = headers2
+    )
+    assert user2_orders.status_code == 404
+    assert user2_orders.json() == {
+        "code": "ORDER_NOT_FOUND",
+        "detail": f"Order {order["id"]} not found" 
+    }
