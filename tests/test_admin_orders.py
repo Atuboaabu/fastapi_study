@@ -5,7 +5,7 @@ def test_admin_get_all_orders(
     create_auth_user,
     create_order
 ):
-    product = create_product(stock=100)
+    product = create_product(stock=1000)
     assert product.id is not None
 
     product_id = product.id
@@ -68,15 +68,38 @@ def test_admin_get_all_orders(
         username = "admin_user",
         role = "admin"
     )
+    while i < 16:
+        order = create_order(
+            items = [
+                {
+                    "product_id": product_id,
+                    "quantity": i
+                }
+            ],
+            headers = admin_headers
+        )
+        i += 1
+
     admin_orders = client.get(
-        "/admin/orders/",
-        headers = admin_headers
+        "/orders/",
+        headers = headers2
     )
     assert admin_orders.status_code == 200
 
     admin_orders_data = admin_orders.json()
     admin_orders_items = admin_orders_data["items"]
-    assert len(admin_orders_items) == 10
+    assert len(admin_orders_items) == 5
+
+
+    all_orders = client.get(
+        "/admin/orders/",
+        headers = admin_headers
+    )
+    assert all_orders.status_code == 200
+
+    all_orders_data = all_orders.json()
+    all_orders_items = all_orders_data["items"]
+    assert len(all_orders_items) == 15
 
     user2_admin_orders_response = client.get(
         "/admin/orders/",
@@ -144,3 +167,40 @@ def test_admin_get_others_order(
         "code": "FORBIDDEN",
         "detail": "Insufficient permissions"
     }
+
+def test_admin_get_orders_no_headers(
+    client,
+    create_product,
+    create_auth_user,
+    create_order
+):
+    product = create_product(stock=100)
+    assert product.id is not None
+
+    product_id = product.id
+
+    user1, headers1 = create_auth_user(
+        username = "customer_user1",
+        role = "customer"
+    )
+
+    order = create_order(
+        items = [
+            {
+                "product_id": product_id,
+                "quantity": 10
+            }
+        ],
+        headers = headers1
+    )
+    assert isinstance(order["id"], int)
+
+    response = client.get(
+        f"/admin/orders/{order["id"]}"
+    )
+    assert response.status_code == 401
+
+    response = client.get(
+        "/admin/orders/"
+    )
+    assert response.status_code == 401

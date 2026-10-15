@@ -621,7 +621,7 @@ def test_get_orders_ownership(
     assert user2_orders_data["offset"] == 0
     assert user2_orders_data["limit"] == 20
 
-def get_others_order(
+def test_get_others_order(
     client,
     create_product,
     create_order,
