@@ -215,9 +215,13 @@ def test_change_order_status_db(
             }
         )
         session.commit()
+    session.rollback()
 
-    order_after = session.get(Order, order_id)
-    assert order_after.status == OrderStatus.PENDING
+    status_after = session.execute(
+        text("SELECT status from orders WHERE id = :id"),
+        {"id": order_id}
+    ).scalar_one()
+    assert status_after == OrderStatus.PENDING.value
 
     session.execute(
         text("UPDATE orders SET status = :status WHERE id = :id"),
@@ -227,6 +231,9 @@ def test_change_order_status_db(
         }
     )
     session.commit()
-    order_after = session.get(Order, order_id)
-    assert order_after.status == OrderStatus.COMPLETED
+    status_after = session.execute(
+        text("SELECT status from orders WHERE id = :id"),
+        {"id": order_id}
+    ).scalar_one()
+    assert status_after == OrderStatus.COMPLETED.value
 
