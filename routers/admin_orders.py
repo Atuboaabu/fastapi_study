@@ -5,6 +5,7 @@ from schemas import AdminOrderPublic, AdminOrderListResponse
 from services import orders
 
 from dependencies import SessionDep, AdminUserDep
+from enums import OrderStatus
 
 router = APIRouter(
     prefix = "/admin/orders",
@@ -33,7 +34,7 @@ def get_all_orders(
     user: AdminUserDep,
     session: SessionDep,
     product_id: Annotated[int | None, Query(gt=0)] = None,
-    status_filter: Annotated[str | None, Query(alias="status", max_length=20)] = None,
+    status_filter: Annotated[OrderStatus | None, Query(alias="status", max_length=20)] = None,
     sort_order: Annotated[str, Query(pattern="^(asc|desc)$")] = "desc",
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,

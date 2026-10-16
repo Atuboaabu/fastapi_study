@@ -1,5 +1,8 @@
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field, Relationship, Column
 from sqlalchemy import CheckConstraint
+from sqlalchemy import Enum as SAEnum
+
+from enums import OrderStatus
 
 class OrderItem(SQLModel, table = True):
     __tablename__ = "order_items"
@@ -40,9 +43,22 @@ class Order(SQLModel, table = True):
         foreign_key = "users.id",
         index = True
     )
-    status: str = Field(
-        default="pending",
-        max_length=20
+    status: OrderStatus = Field(
+        default=OrderStatus.PENDING,
+        sa_column=Column(
+            SAEnum(
+                OrderStatus,
+                values_callable = lambda enum_cls: [
+                    item.value
+                    for item in enum_cls
+                ],
+                native_enum = False,
+                create_constraint = True,
+                name = "ck_orders_status_valid",
+                length = 20
+            ),
+            nullable = False
+        )
     )
     user: "User" = Relationship(
         back_populates = "orders"

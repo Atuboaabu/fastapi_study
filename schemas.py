@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, Field
+from enums import OrderStatus
 
 class OrderItemCreate(SQLModel):
     product_id: int = Field(gt = 0)
@@ -14,7 +15,7 @@ class OrderCreate(SQLModel):
 
 class OrderPublic(SQLModel):
     id: int
-    status: str
+    status: OrderStatus
     items: list[OrderItemPublic]
 
 class OrderListResponse(SQLModel):
@@ -26,7 +27,7 @@ class OrderListResponse(SQLModel):
 class AdminOrderPublic(SQLModel):
     id: int
     user_id: int
-    status: str
+    status: OrderStatus
     items: list[OrderItemPublic]
 
 class AdminOrderListResponse(SQLModel):
