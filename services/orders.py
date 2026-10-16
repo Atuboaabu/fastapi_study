@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from models import Order, OrderItem, Product
 from schemas import OrderCreate
 from exceptions import ProductNotFoundException, DuplicateProductException, InsufficientStockException, OrderNotFoundException
+from enums import OrderStatus
 
 def create_order(
     order_data: OrderCreate,
@@ -35,7 +36,7 @@ def create_order(
 
     try:
         order = Order(
-            status="pending",
+            status=OrderStatus.PENDING,
             user_id = user_id
         )
         session.add(order)
@@ -102,7 +103,7 @@ def get_orders_for_user(
     session: Session,
     user_id: int,
     product_id: int | None = None,
-    status_filter: str | None = None,
+    status_filter: OrderStatus | None = None,
     sort_order: Literal["asc", "desc"] = "desc",
     offset: int = 0,
     limit: int = 20,
@@ -142,7 +143,7 @@ def get_orders_for_user(
 def get_all_orders(
     session: Session,
     product_id: int | None = None,
-    status_filter: str | None = None,
+    status_filter: OrderStatus | None = None,
     sort_order: Literal["asc", "desc"] = "desc",
     offset: int = 0,
     limit: int = 20,
