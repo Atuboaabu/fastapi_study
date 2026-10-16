@@ -3,10 +3,17 @@ from typing import Literal
 from sqlmodel import Session, select
 from sqlalchemy import func, distinct
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
 
 from models import Order, OrderItem, Product
 from schemas import OrderCreate
-from exceptions import ProductNotFoundException, DuplicateProductException, InsufficientStockException, OrderNotFoundException
+from exceptions import (
+    ProductNotFoundException,
+    DuplicateProductException,
+    InsufficientStockException,
+    OrderNotFoundException,
+    InvalidOrderStateTransitionException
+)
 from enums import OrderStatus
 
 def create_order(
@@ -96,6 +103,35 @@ def get_order_by_id(
 
     if order is None:
         raise OrderNotFoundException(order_id)
+
+    return order
+
+def cancel_order_for_user(
+    order_id: int,
+    user_id: int,
+    session: Session
+) -> Order:
+    statement = select(Order).where(
+        Order.id == order_id
+    ).where(
+        Order.user_id == user_id
+    )
+    order = session.exec(statement).first()
+
+    if order is None:
+        raise OrderNotFoundException(order_id)
+    
+    if order.status != OrderStatus.PENDING:
+        raise InvalidOrderStateTransitionException(order.status, OrderStatus.CANCELLED)
+    
+    try:
+        for item in order.items:
+            item.product.stock += item.quantity
+        order.status = OrderStatus.CANCELLED
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
 
     return order
 

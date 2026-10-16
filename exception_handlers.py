@@ -12,7 +12,9 @@ from exceptions import (
     InvalidCredentialsException,
     InvalidTokenException,
     InactiveUserException,
-    ForbiddenException)
+    ForbiddenException,
+    InvalidOrderStateTransitionException,
+)
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(DuplicateProductException)
@@ -161,6 +163,19 @@ def register_exception_handlers(app: FastAPI) -> None:
             content = {
                 "code": "FORBIDDEN",
                 "detail": "Insufficient permissions"
+            }
+        )
+    
+    @app.exception_handler(InvalidOrderStateTransitionException)
+    async def invalid_orderstatus_transition_handle(
+        request: Request,
+        exc: InvalidOrderStateTransitionException
+    ):
+        return JSONResponse(
+            status_code = status.HTTP_409_CONFLICT,
+            content = {
+                "code": "INVALID_STATUS_TRANSITION",
+                "detail": f"Invalid status transition: {exc.current_status.value} -> {exc.dest_status.value}"
             }
         )
         

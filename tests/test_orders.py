@@ -671,3 +671,342 @@ def test_get_others_order(
         "code": "ORDER_NOT_FOUND",
         "detail": f"Order {order["id"]} not found" 
     }
+
+def test_cancel_order_success(
+    client,
+    create_auth_user,
+    create_order,
+    create_product
+):
+    product1 = create_product(stock = 100)
+    assert product1.id is not None
+
+    product2 = create_product(
+        sku = "TEST-02",
+        name = "Display Screen",
+        price = 888.9,
+        stock = 200
+    )
+    assert product2.id is not None
+
+    user, headers = create_auth_user(
+        username = "user1"
+    )
+
+    order = create_order(
+        items = [
+            {
+                "product_id": product1.id,
+                "quantity": 25
+            },
+            {
+                "product_id": product2.id,
+                "quantity": 30
+            },
+        ],
+        headers = headers
+    )
+    assert isinstance(order["id"], int)
+
+    product1_after_create = client.get(
+        f"/products/{product1.id}"
+    )
+    assert product1_after_create.status_code == 200
+    product1_after_create_data = product1_after_create.json()
+    assert product1_after_create_data["stock"] == 75
+
+    product2_after_create = client.get(
+        f"/products/{product2.id}"
+    )
+    assert product2_after_create.status_code == 200
+    product2_after_create_data = product2_after_create.json()
+    assert product2_after_create_data["stock"] == 170
+
+    cancel_response = client.post(
+        f"/orders/{order["id"]}/cancel",
+        headers = headers
+    )
+    assert cancel_response.status_code == 200
+
+    response_data = cancel_response.json()
+    assert response_data["id"] == order["id"]
+    assert response_data["status"] == "cancelled"
+
+    product1_after_cancel = client.get(
+        f"/products/{product1.id}"
+    )
+    assert product1_after_cancel.status_code == 200
+    product1_after_cancel_data = product1_after_cancel.json()
+
+    assert product1_after_cancel_data["stock"] == 100
+
+    product2_after_cancel = client.get(
+        f"/products/{product2.id}"
+    )
+    assert product2_after_cancel.status_code == 200
+    product2_after_cancel_data = product2_after_cancel.json()
+
+    assert product2_after_cancel_data["stock"] == 200
+
+def test_cancel_cancelled_order(
+    client,
+    create_auth_user,
+    create_order,
+    create_product
+):
+    product1 = create_product(stock = 100)
+    assert product1.id is not None
+
+    product2 = create_product(
+        sku = "TEST-02",
+        name = "Display Screen",
+        price = 888.9,
+        stock = 200
+    )
+    assert product2.id is not None
+
+    user, headers = create_auth_user(
+        username = "user1"
+    )
+
+    order = create_order(
+        items = [
+            {
+                "product_id": product1.id,
+                "quantity": 25
+            },
+            {
+                "product_id": product2.id,
+                "quantity": 30
+            },
+        ],
+        headers = headers
+    )
+    assert isinstance(order["id"], int)
+
+    cancel_response = client.post(
+        f"/orders/{order["id"]}/cancel",
+        headers = headers
+    )
+    assert cancel_response.status_code == 200
+
+    response_data = cancel_response.json()
+    assert response_data["id"] == order["id"]
+    assert response_data["status"] == "cancelled"
+
+    cancel_response_second = client.post(
+        f"/orders/{order["id"]}/cancel",
+        headers = headers
+    )
+    assert cancel_response_second.status_code == 409
+    assert cancel_response_second.json() == {
+        "code": "INVALID_STATUS_TRANSITION",
+        "detail": f"Invalid status transition: cancelled -> cancelled"
+    }
+
+    product1_after_cancel = client.get(
+        f"/products/{product1.id}"
+    )
+    assert product1_after_cancel.status_code == 200
+    product1_after_cancel_data = product1_after_cancel.json()
+
+    assert product1_after_cancel_data["stock"] == 100
+
+    product2_after_cancel = client.get(
+        f"/products/{product2.id}"
+    )
+    assert product2_after_cancel.status_code == 200
+    product2_after_cancel_data = product2_after_cancel.json()
+
+    assert product2_after_cancel_data["stock"] == 200
+
+def test_cancel_others_order(
+    client,
+    create_auth_user,
+    create_order,
+    create_product
+):
+    product1 = create_product(stock = 100)
+    assert product1.id is not None
+
+    product2 = create_product(
+        sku = "TEST-02",
+        name = "Display Screen",
+        price = 888.9,
+        stock = 200
+    )
+    assert product2.id is not None
+
+    user1, headers1 = create_auth_user(
+        username = "user1"
+    )
+
+    order = create_order(
+        items = [
+            {
+                "product_id": product1.id,
+                "quantity": 25
+            },
+            {
+                "product_id": product2.id,
+                "quantity": 30
+            },
+        ],
+        headers = headers1
+    )
+    assert isinstance(order["id"], int)
+
+    user2, headers2 = create_auth_user(
+        username = "user2"
+    )
+
+    cancel_response = client.post(
+        f"/orders/{order["id"]}/cancel",
+        headers = headers2
+    )
+    assert cancel_response.status_code == 404
+    assert cancel_response.json() == {
+        "code": "ORDER_NOT_FOUND",
+        "detail": f"Order {order["id"]} not found"
+    }
+
+    product1_after_cancel = client.get(
+        f"/products/{product1.id}"
+    )
+    assert product1_after_cancel.status_code == 200
+    product1_after_cancel_data = product1_after_cancel.json()
+
+    assert product1_after_cancel_data["stock"] == 75
+
+    product2_after_cancel = client.get(
+        f"/products/{product2.id}"
+    )
+    assert product2_after_cancel.status_code == 200
+    product2_after_cancel_data = product2_after_cancel.json()
+
+    assert product2_after_cancel_data["stock"] == 170
+
+def test_cancel_order_no_headers(
+    client,
+    create_auth_user,
+    create_order,
+    create_product
+):
+    product1 = create_product(stock = 100)
+    assert product1.id is not None
+
+    product2 = create_product(
+        sku = "TEST-02",
+        name = "Display Screen",
+        price = 888.9,
+        stock = 200
+    )
+    assert product2.id is not None
+
+    user, headers = create_auth_user(
+        username = "user1"
+    )
+
+    order = create_order(
+        items = [
+            {
+                "product_id": product1.id,
+                "quantity": 25
+            },
+            {
+                "product_id": product2.id,
+                "quantity": 30
+            },
+        ],
+        headers = headers
+    )
+    assert isinstance(order["id"], int)
+
+    cancel_response = client.post(
+        f"/orders/{order["id"]}/cancel",
+    )
+    assert cancel_response.status_code == 401
+
+    product1_after_cancel = client.get(
+        f"/products/{product1.id}"
+    )
+    assert product1_after_cancel.status_code == 200
+    product1_after_cancel_data = product1_after_cancel.json()
+
+    assert product1_after_cancel_data["stock"] == 75
+
+    product2_after_cancel = client.get(
+        f"/products/{product2.id}"
+    )
+    assert product2_after_cancel.status_code == 200
+    product2_after_cancel_data = product2_after_cancel.json()
+
+    assert product2_after_cancel_data["stock"] == 170
+
+def test_cancel_order_admin_user(
+    client,
+    create_auth_user,
+    create_order,
+    create_product
+):
+    product1 = create_product(stock = 100)
+    assert product1.id is not None
+
+    product2 = create_product(
+        sku = "TEST-02",
+        name = "Display Screen",
+        price = 888.9,
+        stock = 200
+    )
+    assert product2.id is not None
+
+    admin, admin_headers = create_auth_user(
+        username = "admin_user",
+        role = "admin"
+    )
+
+    admin_user_order = create_order(
+        items = [
+            {
+                "product_id": product1.id,
+                "quantity": 25
+            },
+            {
+                "product_id": product2.id,
+                "quantity": 30
+            },
+        ],
+        headers = admin_headers
+    )
+    assert isinstance(admin_user_order["id"], int)
+
+    cancel_response = client.post(
+        f"/orders/{admin_user_order["id"]}/cancel",
+        headers = admin_headers
+    )
+    assert cancel_response.status_code == 200
+
+    customer, customer_headers = create_auth_user(
+        username = "customer_user",
+    )
+    customer_user_order = create_order(
+        items = [
+            {
+                "product_id": product1.id,
+                "quantity": 33
+            },
+            {
+                "product_id": product2.id,
+                "quantity": 12
+            },
+        ],
+        headers = customer_headers
+    )
+    assert isinstance(customer_user_order["id"], int)
+
+    cancel_response = client.post(
+        f"/orders/{customer_user_order["id"]}/cancel",
+        headers = admin_headers
+    )
+    assert cancel_response.status_code == 404
+

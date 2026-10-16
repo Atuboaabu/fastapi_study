@@ -1,3 +1,4 @@
+from enums import OrderStatus
 
 class ProductNotFoundException(Exception):
     def __init__(self, product_id: int)->None:
@@ -38,3 +39,11 @@ class InactiveUserException(Exception):
 class ForbiddenException(Exception):
     pass
 
+class InvalidOrderStateTransitionException(Exception):
+    def __init__(
+        self,
+        current_status: OrderStatus,
+        dest_status: OrderStatus
+    ):
+        self.current_status = current_status
+        self.dest_status = dest_status
