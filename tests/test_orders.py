@@ -545,6 +545,19 @@ def test_get_orders_invalid_pagination(
 
     assert response.status_code == 422
 
+def test_get_orders_invalid_status(
+    client,
+    customer_headers
+):
+    headers = customer_headers
+
+    response = client.get(
+        "/orders/?status=whatever",
+        headers = headers
+    )
+
+    assert response.status_code == 422
+
 def test_get_orders_ownership(
     client,
     create_product,
