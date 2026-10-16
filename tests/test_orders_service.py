@@ -1,5 +1,6 @@
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from models import Product, Order, OrderItem, User
 from schemas import OrderCreate, OrderItemCreate
 from services import orders
@@ -204,14 +205,28 @@ def test_change_order_status_db(
     order_id = order.id
 
     with pytest.raises(
-        Exception
+        IntegrityError
     ):
         session.execute(
-            text("UPDATE orders SET status = whatever WHERE id = :id"),
-            {"id": order_id}
+            text("UPDATE orders SET status = :status WHERE id = :id"),
+            {
+                "status": "whatever",
+                "id": order_id
+            }
         )
         session.commit()
 
     order_after = session.get(Order, order_id)
     assert order_after.status == OrderStatus.PENDING
+
+    session.execute(
+        text("UPDATE orders SET status = :status WHERE id = :id"),
+        {
+            "status": "completed",
+            "id": order_id
+        }
+    )
+    session.commit()
+    order_after = session.get(Order, order_id)
+    assert order_after.status == OrderStatus.COMPLETED
 
