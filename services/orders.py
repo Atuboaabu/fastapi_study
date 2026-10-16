@@ -3,7 +3,6 @@ from typing import Literal
 from sqlmodel import Session, select
 from sqlalchemy import func, distinct
 from sqlalchemy.orm import selectinload
-from sqlalchemy.exc import IntegrityError
 
 from models import Order, OrderItem, Product
 from schemas import OrderCreate

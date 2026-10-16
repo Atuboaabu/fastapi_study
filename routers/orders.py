@@ -75,18 +75,18 @@ def get_orders(
     )
 
 @router.post(
-    "/{id}/cancel",
+    "/{order_id}/cancel",
     response_model = OrderPublic
 )
 def cancel_order(
-    id: Annotated[int, Path(ge = 0)],
+    order_id: Annotated[int, Path(gt = 0)],
     user: ActiveUserDep,
     session: SessionDep
 ):
     assert user.id is not None
 
     return orders.cancel_order_for_user(
-        id,
+        order_id,
         user.id,
         session
     )

@@ -1,4 +1,5 @@
 import pytest
+from sqlalchemy import text
 from models import Product, Order, OrderItem, User
 from schemas import OrderCreate, OrderItemCreate
 from services import orders
@@ -80,7 +81,7 @@ def test_order_rollback_when_commit_fails(
     ).all()
     assert created_items == []
 
-def test_cancle_order_rollback_when_commit_fails(
+def test_cancel_order_rollback_when_commit_fails(
     session,
     monkeypatch
 ):
@@ -151,6 +152,65 @@ def test_cancle_order_rollback_when_commit_fails(
 
     assert product_after is not None
     assert product_after.stock == 8
+
+    order_after = session.get(Order, order_id)
+    assert order_after.status == OrderStatus.PENDING
+
+def test_change_order_status_db(
+    session
+):
+    product = Product(
+        sku="TEST-01",
+        name="KeyBoard",
+        price=99.9,
+        stock=10,
+    )
+
+    session.add(product)
+    session.commit()
+    session.refresh(product)
+
+    assert product.id is not None
+    product_id = product.id
+
+    user = User(
+        username = "customer",
+        hashed_password = hash_password("password123"),
+        role = "customer"
+    )
+
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    assert user.id is not None
+    user_id = user.id
+
+    order_data = OrderCreate(
+        items=[
+            OrderItemCreate(
+                product_id=product_id,
+                quantity=2
+            )
+        ]
+    )
+
+    order = orders.create_order(order_data, user_id, session)
+    assert order.id is not None
+    session.refresh(product)
+    assert product.stock == 8
+    assert order.status == OrderStatus.PENDING
+
+    order_id = order.id
+
+    with pytest.raises(
+        Exception
+    ):
+        session.execute(
+            text("UPDATE orders SET status = whatever WHERE id = :id"),
+            {"id": order_id}
+        )
+        session.commit()
 
     order_after = session.get(Order, order_id)
     assert order_after.status == OrderStatus.PENDING
