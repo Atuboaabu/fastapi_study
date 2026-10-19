@@ -1010,3 +1010,79 @@ def test_cancel_order_admin_user(
     )
     assert cancel_response.status_code == 404
 
+def test_complete_order_success(
+    client,
+    create_auth_user,
+    create_order,
+    create_product
+):
+    product = create_product(stock=100)
+    assert product.id is not None
+
+    product_id = product.id
+
+    customer, customer_header = create_auth_user(
+        username = "customer_user",
+        role = "customer"
+    )
+
+    order = create_order(
+        items = [
+            {
+                "product_id": product_id,
+                "quantity": 10
+            }
+        ],
+        headers = customer_header
+    )
+    assert isinstance(order["id"], int)
+    order_id = order["id"]
+
+    response = client.post(
+        f"/admin/orders/{order_id}/pay",
+        headers = customer_header
+    )
+    assert response.status_code == 403
+
+    admin, admin_header = create_auth_user(
+        username = "admin_user",
+        role = "admin"
+    )
+    response = client.post(
+        f"/admin/orders/{order_id}/pay",
+        headers = admin_header
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["status"] == "paid"
+
+    response = client.post(
+        f"/admin/orders/{order_id}/ship",
+        headers = customer_header
+    )
+    assert response.status_code == 403
+
+    response = client.post(
+        f"/admin/orders/{order_id}/ship",
+        headers = admin_header
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["status"] == "shipped"
+
+    response = client.post(
+        f"/orders/{order_id}/complete",
+        headers = admin_header
+    )
+    assert response.status_code == 404
+
+    response = client.post(
+        f"/orders/{order_id}/complete",
+        headers = customer_header
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["status"] == "completed"

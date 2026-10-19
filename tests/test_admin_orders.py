@@ -214,3 +214,112 @@ def test_admin_get_orders_no_headers(
         "/admin/orders/"
     )
     assert response.status_code == 401
+
+def test_admin_mark_order_paid_success(
+    client,
+    create_product,
+    create_auth_user,
+    create_order
+):
+    product = create_product(stock=100)
+    assert product.id is not None
+
+    product_id = product.id
+
+    customer, customer_header = create_auth_user(
+        username = "customer_user",
+        role = "customer"
+    )
+
+    order = create_order(
+        items = [
+            {
+                "product_id": product_id,
+                "quantity": 10
+            }
+        ],
+        headers = customer_header
+    )
+    assert isinstance(order["id"], int)
+    order_id = order["id"]
+
+    response = client.post(
+        f"/admin/orders/{order_id}/pay",
+        headers = customer_header
+    )
+    assert response.status_code == 403
+
+    admin, admin_header = create_auth_user(
+        username = "admin_user",
+        role = "admin"
+    )
+    response = client.post(
+        f"/admin/orders/{order_id}/pay",
+        headers = admin_header
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["status"] == "paid"
+
+def test_admin_mark_order_shipped_success(
+    client,
+    create_product,
+    create_auth_user,
+    create_order
+):
+    product = create_product(stock=100)
+    assert product.id is not None
+
+    product_id = product.id
+
+    customer, customer_header = create_auth_user(
+        username = "customer_user",
+        role = "customer"
+    )
+
+    order = create_order(
+        items = [
+            {
+                "product_id": product_id,
+                "quantity": 10
+            }
+        ],
+        headers = customer_header
+    )
+    assert isinstance(order["id"], int)
+    order_id = order["id"]
+
+    response = client.post(
+        f"/admin/orders/{order_id}/pay",
+        headers = customer_header
+    )
+    assert response.status_code == 403
+
+    admin, admin_header = create_auth_user(
+        username = "admin_user",
+        role = "admin"
+    )
+    response = client.post(
+        f"/admin/orders/{order_id}/pay",
+        headers = admin_header
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["status"] == "paid"
+
+    response = client.post(
+        f"/admin/orders/{order_id}/ship",
+        headers = customer_header
+    )
+    assert response.status_code == 403
+
+    response = client.post(
+        f"/admin/orders/{order_id}/ship",
+        headers = admin_header
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["status"] == "shipped"

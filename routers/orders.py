@@ -90,3 +90,20 @@ def cancel_order(
         user.id,
         session
     )
+
+@router.post(
+    "/{order_id}/complete",
+    response_model = OrderPublic
+)
+def complete_order(
+    order_id: Annotated[int, Path(gt=0)],
+    user: ActiveUserDep,
+    session: SessionDep
+):
+    assert user.id is not None
+
+    return orders.complete_order_for_user(
+        order_id,
+        user.id,
+        session
+    )

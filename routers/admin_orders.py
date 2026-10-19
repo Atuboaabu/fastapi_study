@@ -53,3 +53,35 @@ def get_all_orders(
         offset=offset,
         limit=limit
     )
+
+@router.post(
+    "/{order_id}/pay",
+    response_model = AdminOrderPublic
+)
+def mark_order_paid(
+    order_id: Annotated[int, Path(gt = 0)],
+    user: AdminUserDep,
+    session: SessionDep
+):
+    assert user.id is not None
+
+    return orders.mark_order_paid(
+        order_id,
+        session
+    )
+
+@router.post(
+    "/{order_id}/ship",
+    response_model = AdminOrderPublic
+)
+def mark_order_shipped(
+    order_id: Annotated[int, Path(gt = 0)],
+    user: AdminUserDep,
+    session: SessionDep
+):
+    assert user.id is not None
+
+    return orders.mark_order_shipped(
+        order_id,
+        session
+    )
