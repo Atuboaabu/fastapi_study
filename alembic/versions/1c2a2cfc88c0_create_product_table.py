@@ -1,7 +1,7 @@
 """create product table
 
 Revision ID: 1c2a2cfc88c0
-Revises: dc9477e709c3
+Revises: 
 Create Date: 2026-10-19 15:35:34.241493
 
 """

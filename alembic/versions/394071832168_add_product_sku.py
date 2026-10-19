@@ -1,7 +1,7 @@
 """add product sku
 
 Revision ID: 394071832168
-Revises: 
+Revises: 1c2a2cfc88c0
 Create Date: 2026-09-11 14:50:41.340707
 
 """

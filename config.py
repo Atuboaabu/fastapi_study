@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Setting(BaseSettings):
-    database_url: str = "sqlite:///database.db"
+    database_url: str
     sql_echo: bool = True
 
     jwt_secret_key: str

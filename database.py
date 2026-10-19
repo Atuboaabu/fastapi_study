@@ -1,8 +1,4 @@
-from sqlmodel import create_engine, SQLModel
-from fastapi import FastAPI
-from contextlib import asynccontextmanager
-from sqlalchemy import event
-import models
+from sqlmodel import create_engine
 from config import settings
 
 
