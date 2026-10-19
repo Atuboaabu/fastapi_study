@@ -3,7 +3,7 @@ from order_state import is_order_transition_allowed
 from enums import OrderStatus
 
 @pytest.mark.parametrize(
-    "current_status, dest_status, excepted_result",
+    "current_status, dest_status, expected_result",
     [
         (OrderStatus.PENDING, OrderStatus.PENDING, False),
         (OrderStatus.PENDING, OrderStatus.PAID, True),
@@ -35,6 +35,6 @@ from enums import OrderStatus
 def test_order_transition(
     current_status,
     dest_status,
-    excepted_result
+    expected_result
 ):
-    assert is_order_transition_allowed(current_status, dest_status) == excepted_result
+    assert is_order_transition_allowed(current_status, dest_status) == expected_result
