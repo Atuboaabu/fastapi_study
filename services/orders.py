@@ -14,6 +14,7 @@ from exceptions import (
     InvalidOrderStateTransitionException
 )
 from enums import OrderStatus
+from order_state import is_order_transition_allowed
 
 def create_order(
     order_data: OrderCreate,
@@ -120,7 +121,7 @@ def cancel_order_for_user(
     if order is None:
         raise OrderNotFoundException(order_id)
     
-    if order.status != OrderStatus.PENDING:
+    if is_order_transition_allowed(order.status, OrderStatus.CANCELLED):
         raise InvalidOrderStateTransitionException(order.status, OrderStatus.CANCELLED)
     
     try:
