@@ -121,7 +121,7 @@ def cancel_order_for_user(
     if order is None:
         raise OrderNotFoundException(order_id)
     
-    if is_order_transition_allowed(order.status, OrderStatus.CANCELLED):
+    if not is_order_transition_allowed(order.status, OrderStatus.CANCELLED):
         raise InvalidOrderStateTransitionException(order.status, OrderStatus.CANCELLED)
     
     try:
