@@ -1,9 +1,8 @@
 from fastapi import FastAPI
-from database import lifespan
 from routers import products, orders, auth, users, admin_orders
 from exception_handlers import register_exception_handlers
 
-app = FastAPI(lifespan = lifespan)
+app = FastAPI()
 
 register_exception_handlers(app)
 
