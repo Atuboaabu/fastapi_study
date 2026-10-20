@@ -53,16 +53,18 @@ with Session(demo_engine) as session:
 lock_event = Event()
 def buy_product_test(worker_name: str):
     print(f"{worker_name} in")
-    start = time.perf_counter()
     if worker_name == "thread-2":
         lock_event.wait()
 
     with Session(demo_engine) as session:
+        start = time.perf_counter()
         product = session.exec(
             select(Product).where(
                 Product.sku == "Test-SKU-01"
             ).with_for_update()
         ).first()
+        elapsed = time.perf_counter() - start
+        print(f"{worker_name} exec time cost: {elapsed}")
         assert product is not None
 
         if worker_name == "thread-1":
@@ -81,8 +83,6 @@ def buy_product_test(worker_name: str):
                 raise
         else:
             print(f"{worker_name} product {product.sku} stock insufficient")
-            elapsed = time.perf_counter() - start
-            print(f"{worker_name} time cost: {elapsed}")
             return
         
         session.refresh(product)

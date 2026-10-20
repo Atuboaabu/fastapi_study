@@ -28,18 +28,27 @@ def create_order(
 
     if len(product_ids) != len(set(product_ids)):
         raise DuplicateProductException()
-
-    products: dict[int, Product] = {}
+    
+    statement = (
+        select(Product)
+        .where(Product.id.in_(product_ids))
+        .order_by(Product.id)
+        .with_for_update()
+    )
+    lock_products = session.exec(statement).all()
+    products: dict[int, Product] = {
+        product.id: product
+        for product in lock_products
+    }
+    
     for item in order_data.items:
-        product = session.get(Product, item.product_id)
-
-        if product is None:
+        if not item.product_id in products.keys():
             raise ProductNotFoundException(item.product_id)
+
+        product = products[item.product_id]
 
         if product.stock < item.quantity:
             raise InsufficientStockException(item.product_id)
-
-        products[item.product_id] = product
 
     try:
         order = Order(
