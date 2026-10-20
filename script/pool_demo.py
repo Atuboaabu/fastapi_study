@@ -1,6 +1,7 @@
 
 from sqlmodel import create_engine, Session, text
 from sqlalchemy import event
+from sqlalchemy.exc import TimeoutError
 
 from config import settings
 
@@ -31,3 +32,35 @@ with Session(demo_engine) as session1:
 
 with Session(demo_engine) as session:
     session.execute(text("SELECT 1"))
+
+session1 = Session(demo_engine)
+session2 = Session(demo_engine)
+session3 = Session(demo_engine)
+
+try:
+    session1.execute(text("SELECT 1"))
+    session2.execute(text("SELECT 1"))
+    session3.execute(text("SELECT 1"))
+except TimeoutError:
+    print("pool connection timeout")
+finally:
+    session1.close()
+    session2.close()
+    session3.close()
+
+### 执行输出
+# uv run python -m script.pool_demo
+# Demo Engine Connected
+# Demo Engine Checkout
+# Demo Engine Checkin
+# Demo Engine Checkout
+# Demo Engine Checkin
+# Demo Engine Checkout
+# Demo Engine Checkin
+# Demo Engine Checkout
+# Demo Engine Connected
+# Demo Engine Checkout
+# pool connection timeout
+# Demo Engine Checkin
+# Demo Engine Checkin
+###
