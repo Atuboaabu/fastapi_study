@@ -63,14 +63,16 @@ def buy_product_test(worker_name: str):
         barrier.wait()
 
         print(f"{worker_name} start work")
-        try:
-            if product.stock >= 7:
+        if product.stock >= 7:
+            try:
                 product.stock -= 7
-
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+        else:
+            print(f"product {product.sku} stock insufficient")
+            return
         
         session.refresh(product)
         print(f"{worker_name} commited, product {product.sku} stock = {product.stock}")
