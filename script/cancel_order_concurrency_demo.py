@@ -1,5 +1,5 @@
 from sqlmodel import create_engine, Session, select
-from threading import Thread, Barrier
+# from threading import Thread, Barrier
 from concurrent.futures import ThreadPoolExecutor
 
 from config import settings
@@ -7,8 +7,8 @@ from models import Product, User, Order
 from schemas import OrderCreate, OrderItemCreate, UserCreate
 from services import orders, users
 from exceptions import InvalidOrderStateTransitionException
-from enums import OrderStatus
-from order_state import ALLOWED_ORDER_TRANSITIONS
+# from enums import OrderStatus
+# from order_state import ALLOWED_ORDER_TRANSITIONS
 
 demo_engine = create_engine(
     url = settings.database_url,
