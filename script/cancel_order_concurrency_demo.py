@@ -84,15 +84,15 @@ with Session(demo_engine) as session:
     order_id = order.id
 
 # 替换 is_order_transition_allowed 接口，构造cancel_order接口的concurrency场景
-barrier = Barrier(2)
-def is_order_transition_allowed_synchronized(
-    current_status: OrderStatus,
-    dest_status: OrderStatus
-)->bool:
-    barrier.wait()
-    return dest_status in ALLOWED_ORDER_TRANSITIONS[current_status]
+# barrier = Barrier(2)
+# def is_order_transition_allowed_synchronized(
+#     current_status: OrderStatus,
+#     dest_status: OrderStatus
+# )->bool:
+#     barrier.wait()
+#     return dest_status in ALLOWED_ORDER_TRANSITIONS[current_status]
 
-orders.is_order_transition_allowed = is_order_transition_allowed_synchronized
+# orders.is_order_transition_allowed = is_order_transition_allowed_synchronized
 
 def worker(worker_name: str):
     print(f"{worker_name} start")
@@ -142,5 +142,15 @@ with Session(demo_engine) as session:
 # After Check:
 # Product Test-SKU-01 stock = 10
 # Order 20 status = OrderStatus.CANCELLED
+
+## cancel_order_for_user 接口添加 with_for_update 后的输出：
+# uv run python -m script.cancel_order_concurrency_demo
+# Order 22 created, status = OrderStatus.PENDING
+# thread-1 start
+# thread-2 start
+# ['success', 'invalid_transition']
+# After Check:
+# Product Test-SKU-01 stock = 10
+# Order 22 status = OrderStatus.CANCELLED
 
             

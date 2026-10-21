@@ -164,20 +164,19 @@ def cancel_order_for_user(
     user_id: int,
     session: Session
 ) -> Order:
-    statement = select(Order).where(
-        Order.id == order_id
-    ).where(
-        Order.user_id == user_id
-    )
-    order = session.exec(statement).first()
-
-    if order is None:
-        raise OrderNotFoundException(order_id)
-    
-    if not is_order_transition_allowed(order.status, OrderStatus.CANCELLED):
-        raise InvalidOrderStateTransitionException(order.status, OrderStatus.CANCELLED)
-    
     try:
+        statement = select(Order).where(
+            Order.id == order_id,
+            Order.user_id == user_id
+        ).with_for_update()
+        order = session.exec(statement).first()
+
+        if order is None:
+            raise OrderNotFoundException(order_id)
+        
+        if not is_order_transition_allowed(order.status, OrderStatus.CANCELLED):
+            raise InvalidOrderStateTransitionException(order.status, OrderStatus.CANCELLED)
+
         for item in order.items:
             item.product.stock += item.quantity
         order.status = OrderStatus.CANCELLED
