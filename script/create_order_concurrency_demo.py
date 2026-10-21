@@ -1,10 +1,10 @@
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, create_engine, select, func
 from sqlalchemy import text
 from threading import Thread, Barrier
 
 from services import orders, users
 from config import settings
-from models import Product, User
+from models import Product, User, OrderItem
 from schemas import OrderCreate, OrderItemCreate, UserCreate
 from exceptions import InsufficientStockException
 
@@ -53,23 +53,34 @@ with Session(demo_engine) as session:
         print(f"Product id = {product.id}")
         print(f"Product name = {product.name}")
         print(f"Set Product stock = {product.stock}")
-        product_id = product.id
+    
+    product_id = product.id
 
-        user = session.exec(select(User).where(User.username == "test-user-1")).first()
-        if user is None:
-            user_create = UserCreate(
-                username = "test-user-1",
-                password = "password123"
-            )
-            
-            users.create_user(
-                user_create,
-                session
-            )
+    user = session.exec(select(User).where(User.username == "test-user-1")).first()
+    if user is None:
+        user_create = UserCreate(
+            username = "test-user-1",
+            password = "password123"
+        )
         
-        user = session.exec(select(User).where(User.username == "test-user-1")).first()
-        user_id = user.id
-        print("=" * 20)
+        users.create_user(
+            user_create,
+            session
+        )
+    user = session.exec(select(User).where(User.username == "test-user-1")).first()
+    user_id = user.id
+    print("=" * 20)
+
+    print("Before check:")
+    orders_, count = orders.get_all_orders(session)
+    print(f"orders count: {count}")
+
+    order_items_count = session.exec(
+        select(func.count()).select_from(OrderItem)
+    ).one()
+    print(f"order_items count: {order_items_count}")
+
+    print("=" * 20)
 
 barrier = Barrier(2)
 def worker(
@@ -120,6 +131,7 @@ t2.join()
 
 with Session(demo_engine) as session:
     print("=" * 20)
+    print("After check:")
     product = session.exec(
         select(Product).where(
             Product.sku == "Test-SKU-01"
@@ -127,9 +139,19 @@ with Session(demo_engine) as session:
     ).first()
     assert product is not None
 
-    print(f"After Check: product {product.sku} stock = {product.stock}")
+    print(f"product {product.sku} stock = {product.stock}")
+    orders_, count = orders.get_all_orders(session)
+    print(f"orders count: {count}")
+
+    order_items_count = session.exec(
+        select(func.count()).select_from(OrderItem)
+    ).one()
+    print(f"order_items count: {order_items_count}")
+
+    print("=" * 20)
 
 ## 以上运行输出 ##
+# uv run python -m script.create_order_concurrency_demo
 # ====================
 # transaction_isolation: read committed
 # Get Product Test-SKU-01 success:
@@ -137,12 +159,20 @@ with Session(demo_engine) as session:
 # Product name = Test-Product-01
 # Set Product stock = 10
 # ====================
+# Before check:
+# orders count: 0
+# order_items count: 0
+# ====================
 # thread-1 start
 # thread-2 start
 # thread-2 create order success
-# Order id: 6
+# Order id: 10
 # Order items:
-# item 6: product 1, quantity 7
+# item 10: product 1, quantity 7
 # thread-1 catch insufficient stock error
 # ====================
-# After Check: product Test-SKU-01 stock = 3
+# After check:
+# product Test-SKU-01 stock = 3
+# orders count: 1
+# order_items count: 1
+# ====================
