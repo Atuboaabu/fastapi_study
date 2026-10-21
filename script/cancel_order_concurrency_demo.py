@@ -7,6 +7,8 @@ from models import Product, User, Order
 from schemas import OrderCreate, OrderItemCreate, UserCreate
 from services import orders, users
 from exceptions import InvalidOrderStateTransitionException
+from enums import OrderStatus
+from order_state import ALLOWED_ORDER_TRANSITIONS
 
 demo_engine = create_engine(
     url = settings.database_url,
@@ -81,10 +83,19 @@ with Session(demo_engine) as session:
     print(f"Order {order.id} created, status = {order.status}")
     order_id = order.id
 
+# 替换 is_order_transition_allowed 接口，构造cancel_order接口的concurrency场景
 barrier = Barrier(2)
+def is_order_transition_allowed_synchronized(
+    current_status: OrderStatus,
+    dest_status: OrderStatus
+)->bool:
+    barrier.wait()
+    return dest_status in ALLOWED_ORDER_TRANSITIONS[current_status]
+
+orders.is_order_transition_allowed = is_order_transition_allowed_synchronized
+
 def worker(worker_name: str):
     print(f"{worker_name} start")
-    barrier.wait()
 
     with Session(demo_engine) as session:
         try:
@@ -121,5 +132,15 @@ with Session(demo_engine) as session:
     order_after = session.get(Order, order_id)
     assert order_after is not None
     print(f"Order {order_after.id} status = {order_after.status}")
+
+## 以上运行输出 ##
+# uv run python -m script.cancel_order_concurrency_demo
+# Order 20 created, status = OrderStatus.PENDING
+# thread-1 start
+# thread-2 start
+# ['success', 'success']
+# After Check:
+# Product Test-SKU-01 stock = 10
+# Order 20 status = OrderStatus.CANCELLED
 
             
