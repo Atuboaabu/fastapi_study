@@ -140,13 +140,16 @@ with Session(demo_engine) as session:
     assert product is not None
 
     print(f"product {product.sku} stock = {product.stock}")
-    orders_, count = orders.get_all_orders(session)
-    print(f"orders count: {count}")
+    orders_, after_count = orders.get_all_orders(session)
+    print(f"orders count: {after_count}")
 
-    order_items_count = session.exec(
+    after_order_items_count = session.exec(
         select(func.count()).select_from(OrderItem)
     ).one()
-    print(f"order_items count: {order_items_count}")
+    print(f"order_items count: {after_order_items_count}")
+
+    assert after_count - count == 1
+    assert after_order_items_count - order_items_count == 1
 
     print("=" * 20)
 
