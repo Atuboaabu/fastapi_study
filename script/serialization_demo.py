@@ -222,102 +222,111 @@ with Session(demo_engine) as session:
                 raise
 
 barrier = Barrier(2)
+max_attempts = 3
 def worker_1(worker_name: str):
     with Session(demo_engine) as session:
         session.execute(text("SET transaction_isolation = 'serializable'"))
         res = session.execute(text("SHOW transaction_isolation")).scalar_one()
         print(f"transaction_isolation: {res}")
 
-        try:
-            stock_1 = session.execute(
-                text("SELECT stock FROM product WHERE sku = :sku"),
-                {
-                    "sku": "Test-SKU-01"
-                }
-            ).scalar_one()
-            assert stock_1 is not None
-            print(f"{worker_name} get product Test-SKU-01 stock = {stock_1}")
+        for attempt in range(max_attempts):
+            try:
+                stock_1 = session.execute(
+                    text("SELECT stock FROM product WHERE sku = :sku"),
+                    {
+                        "sku": "Test-SKU-01"
+                    }
+                ).scalar_one()
+                assert stock_1 is not None
+                print(f"{worker_name} get product Test-SKU-01 stock = {stock_1}")
 
-            stock_2 = session.execute(
-                text("SELECT stock FROM product WHERE sku = :sku"),
-                {
-                    "sku": "Test-SKU-02"
-                }
-            ).scalar_one()
-            assert stock_2 is not None
-            print(f"{worker_name} get product Test-SKU-02 stock = {stock_2}")
+                stock_2 = session.execute(
+                    text("SELECT stock FROM product WHERE sku = :sku"),
+                    {
+                        "sku": "Test-SKU-02"
+                    }
+                ).scalar_one()
+                assert stock_2 is not None
+                print(f"{worker_name} get product Test-SKU-02 stock = {stock_2}")
 
-            barrier.wait()
+                if attempt == 0:
+                    barrier.wait()
 
-            if stock_2 > 0:
-                statement = update(Product).where(
-                    Product.sku == "Test-SKU-02"
-                ).values(
-                    stock = 0
-                )
+                if stock_2 > 0:
+                    statement = update(Product).where(
+                        Product.sku == "Test-SKU-02"
+                    ).values(
+                        stock = 0
+                    )
 
-                result = session.exec(statement)
+                    result = session.exec(statement)
 
-                print(f"{worker_name} exec result rowcount = {result.rowcount}")
+                    print(f"{worker_name} exec result rowcount = {result.rowcount}")
 
-                session.commit()
-                if result.rowcount == 0:
-                    print(f"{worker_name} change product stock failed")
-                else:
-                    print(f"{worker_name} change product stock")
+                    session.commit()
+                    if result.rowcount == 0:
+                        print(f"{worker_name} change product stock failed")
+                    else:
+                        print(f"{worker_name} change product stock")
+                    break
 
-        except Exception as exc:
-            print(f"{worker_name} except: {exc}")
-            session.rollback()
-            raise
+            except Exception as exc:
+                print(f"{worker_name} except: {exc}")
+                session.rollback()
+                if attempt == max_attempts - 1:
+                    raise
 
 def worker_2(worker_name: str):
     with Session(demo_engine) as session:
         session.execute(text("SET transaction_isolation = 'serializable'"))
         res = session.execute(text("SHOW transaction_isolation")).scalar_one()
         print(f"transaction_isolation: {res}")
+        for attempt in range(max_attempts):
+            try:
+                stock_1 = session.execute(
+                    text("SELECT stock FROM product WHERE sku = :sku"),
+                    {
+                        "sku": "Test-SKU-01"
+                    }
+                ).scalar_one()
+                assert stock_1 is not None
+                print(f"{worker_name} get product Test-SKU-01 stock = {stock_1}")
 
-        try:
-            stock_1 = session.execute(
-                text("SELECT stock FROM product WHERE sku = :sku"),
-                {
-                    "sku": "Test-SKU-01"
-                }
-            ).scalar_one()
-            assert stock_1 is not None
-            print(f"{worker_name} get product Test-SKU-01 stock = {stock_1}")
+                stock_2 = session.execute(
+                    text("SELECT stock FROM product WHERE sku = :sku"),
+                    {
+                        "sku": "Test-SKU-02"
+                    }
+                ).scalar_one()
+                assert stock_2 is not None
+                print(f"{worker_name} get product Test-SKU-02 stock = {stock_2}")
 
-            stock_2 = session.execute(
-                text("SELECT stock FROM product WHERE sku = :sku"),
-                {
-                    "sku": "Test-SKU-02"
-                }
-            ).scalar_one()
-            assert stock_2 is not None
-            print(f"{worker_name} get product Test-SKU-02 stock = {stock_2}")
+                if attempt == 0:
+                    barrier.wait()
 
-            barrier.wait()
+                if stock_1 > 0:
+                    statement = update(Product).where(
+                        Product.sku == "Test-SKU-01"
+                    ).values(
+                        stock = 0
+                    )
+                    result = session.exec(statement)
 
-            if stock_1 > 0:
-                statement = update(Product).where(
-                    Product.sku == "Test-SKU-01"
-                ).values(
-                    stock = 0
-                )
-                result = session.exec(statement)
+                    print(f"{worker_name} exec result rowcount = {result.rowcount}")
 
-                print(f"{worker_name} exec result rowcount = {result.rowcount}")
+                    session.commit()
+                    if result.rowcount == 0:
+                        print(f"{worker_name} change product stock failed")
+                    else:
+                        print(f"{worker_name} change product stock")
 
-                session.commit()
-                if result.rowcount == 0:
-                    print(f"{worker_name} change product stock failed")
-                else:
-                    print(f"{worker_name} change product stock")
+                    break
 
-        except Exception as exc:
-            print(f"{worker_name} except: {exc}")
-            session.rollback()
-            raise
+            except Exception as exc:
+                print(f"{worker_name} except: {exc}")
+                session.rollback()
+                if attempt == max_attempts - 1:
+                    raise
 
 t1 = Thread(
     target=worker_1,
@@ -367,3 +376,24 @@ with Session(demo_engine) as session:
 # ...
 # After Check: product Test-SKU-01 stock = 0
 # After Check: product Test-SKU-02 stock = 1
+
+# retry 输出
+# transaction_isolation: serializable
+# transaction_isolation: serializable
+# thread-1 get product Test-SKU-01 stock = 1
+# thread-2 get product Test-SKU-01 stock = 1
+# thread-1 get product Test-SKU-02 stock = 1
+# thread-2 get product Test-SKU-02 stock = 1
+# thread-2 exec result rowcount = 1
+# thread-1 exec result rowcount = 1
+# thread-1 except: (psycopg.errors.SerializationFailure) could not serialize access due to read/write dependencies among transactions
+# DETAIL:  Reason code: Canceled on identification as a pivot, during commit attempt.
+# HINT:  The transaction might succeed if retried.
+# (Background on this error at: https://sqlalche.me/e/20/e3q8)
+# thread-2 change product stock
+# thread-1 get product Test-SKU-01 stock = 0
+# thread-1 get product Test-SKU-02 stock = 1
+# thread-1 exec result rowcount = 1
+# thread-1 change product stock
+# After Check: product Test-SKU-01 stock = 0
+# After Check: product Test-SKU-02 stock = 0
