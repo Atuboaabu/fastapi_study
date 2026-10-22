@@ -70,6 +70,8 @@ def worker(worker_name: str):
 
         except Exception as exc:
             print(f"{worker_name} except: {exc}")
+            session.rollback()
+            raise
 
 t1 = Thread(
     target=worker,
