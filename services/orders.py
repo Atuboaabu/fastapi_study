@@ -176,9 +176,28 @@ def cancel_order_for_user(
         
         if not is_order_transition_allowed(order.status, OrderStatus.CANCELLED):
             raise InvalidOrderStateTransitionException(order.status, OrderStatus.CANCELLED)
+        
+        product_ids = [
+            item.product.id
+            for item in order.items
+        ]
+
+        lock_products = session.exec(
+            select(Product)
+            .where(
+                Product.id.in_(product_ids)
+            )
+            .order_by(Product.id)
+            .with_for_update()
+        ).all()
+
+        products_dict = {
+            product.id: product
+            for product in lock_products
+        }
 
         for item in order.items:
-            item.product.stock += item.quantity
+            products_dict[item.product.id].stock += item.quantity
         order.status = OrderStatus.CANCELLED
         session.commit()
     except Exception:
