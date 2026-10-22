@@ -121,14 +121,19 @@ def mark_order_paid(
     order_id: int,
     session: Session
 ):
-    order = session.get(Order, order_id)
-    if order is None:
-        raise OrderNotFoundException(order_id)
-    
-    if not is_order_transition_allowed(order.status, OrderStatus.PAID):
-        raise InvalidOrderStateTransitionException(order.status, OrderStatus.PAID)
-    
     try:
+        order = session.exec(
+            select(Order)
+            .where(Order.id == order_id)
+            .with_for_update()
+        ).first()
+
+        if order is None:
+            raise OrderNotFoundException(order_id)
+        
+        if not is_order_transition_allowed(order.status, OrderStatus.PAID):
+            raise InvalidOrderStateTransitionException(order.status, OrderStatus.PAID)
+
         order.status = OrderStatus.PAID
         session.commit()
     except Exception:
@@ -142,14 +147,19 @@ def mark_order_shipped(
     order_id: int,
     session: Session
 ):
-    order = session.get(Order, order_id)
-    if order is None:
-        raise OrderNotFoundException(order_id)
-    
-    if not is_order_transition_allowed(order.status, OrderStatus.SHIPPED):
-        raise InvalidOrderStateTransitionException(order.status, OrderStatus.SHIPPED)
-    
     try:
+        order = session.exec(
+            select(Order)
+            .where(Order.id == order_id)
+            .with_for_update()
+        ).first()
+
+        if order is None:
+            raise OrderNotFoundException(order_id)
+        
+        if not is_order_transition_allowed(order.status, OrderStatus.SHIPPED):
+            raise InvalidOrderStateTransitionException(order.status, OrderStatus.SHIPPED)
+
         order.status = OrderStatus.SHIPPED
         session.commit()
     except Exception:
@@ -178,7 +188,7 @@ def cancel_order_for_user(
             raise InvalidOrderStateTransitionException(order.status, OrderStatus.CANCELLED)
         
         product_ids = [
-            item.product.id
+            item.product_id
             for item in order.items
         ]
 
@@ -197,7 +207,7 @@ def cancel_order_for_user(
         }
 
         for item in order.items:
-            products_dict[item.product.id].stock += item.quantity
+            products_dict[item.product_id].stock += item.quantity
         order.status = OrderStatus.CANCELLED
         session.commit()
     except Exception:
@@ -211,20 +221,19 @@ def complete_order_for_user(
     user_id: int,
     session: Session
 )->Order:
-    statement = select(Order).where(
-        Order.id == order_id
-    ).where(
-        Order.user_id == user_id
-    )
-    order = session.exec(statement).first()
-
-    if order is None:
-        raise OrderNotFoundException(order_id)
-    
-    if not is_order_transition_allowed(order.status, OrderStatus.COMPLETED):
-        raise InvalidOrderStateTransitionException(order.status, OrderStatus.COMPLETED)
-    
     try:
+        statement = select(Order).where(
+            Order.id == order_id,
+            Order.user_id == user_id
+        ).with_for_update()
+        order = session.exec(statement).first()
+
+        if order is None:
+            raise OrderNotFoundException(order_id)
+        
+        if not is_order_transition_allowed(order.status, OrderStatus.COMPLETED):
+            raise InvalidOrderStateTransitionException(order.status, OrderStatus.COMPLETED)
+    
         order.status = OrderStatus.COMPLETED
         session.commit()
     except Exception:
