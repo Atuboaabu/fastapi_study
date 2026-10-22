@@ -179,13 +179,13 @@ with Session(demo_engine) as session:
 # transaction_isolation: repeatable read
 # thread-1 get product Test-SKU-01 stock = 1
 # thread-1 get product Test-SKU-02 stock = 1
-# thread-1 exec result rowcount = 1
-# thread-1 change product stock
 # transaction_isolation: repeatable read
 # thread-2 get product Test-SKU-01 stock = 1
-# thread-2 get product Test-SKU-02 stock = 0
+# thread-2 get product Test-SKU-02 stock = 1
 # thread-2 exec result rowcount = 1
+# thread-1 exec result rowcount = 1
 # thread-2 change product stock
+# thread-1 change product stock
 # After Check: product Test-SKU-01 stock = 0
 # After Check: product Test-SKU-02 stock = 0
 
