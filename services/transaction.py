@@ -1,4 +1,5 @@
-from sqlalchemy.exc import DatabaseError
+from sqlalchemy.exc import DBAPIError
+from pydantic import Field
 
 from session_factory import SessionFactory
 
@@ -6,21 +7,21 @@ def run_transaction(
     session_factory: SessionFactory,
     operation,
     args,
-    max_attemps = 3
+    max_attempts: int = Field(default=3, gt = 0)
 ):
-    for attemp in range(max_attemps):
+    for attemp in range(max_attempts):
         with session_factory() as session:
             try:
                 result = operation(session, args)
                 session.commit()
                 return result
 
-            except DatabaseError as exc:
+            except DBAPIError as exc:
                 session.rollback()
 
-                if getattr(exc.orig, 'sqlstate', None) != 4001:
+                if getattr(exc.orig, 'sqlstate', None) != "40001":
                     raise
-                if attemp == max_attemps - 1:
+                if attemp == max_attempts - 1:
                     raise
 
                 continue
