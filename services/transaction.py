@@ -6,7 +6,7 @@ from database import engine
 def run_transaction(
     operation,
     args,
-    max_attemps
+    max_attemps = 3
 ):
     for attemp in range(max_attemps):
         with Session(engine) as session:
