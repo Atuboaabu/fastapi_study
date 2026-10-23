@@ -15,6 +15,78 @@ from exceptions import (
 )
 from enums import OrderStatus
 from order_state import is_order_transition_allowed
+from services.result import OrderItemResult, OrderResult
+
+def create_order_operation(
+    args: list,
+    session: Session
+) -> OrderResult:
+    [order_data, user_id] = args
+
+    product_ids = [
+        item.product_id
+        for item in order_data.items
+    ]
+    if len(product_ids) != len(set(product_ids)):
+        raise DuplicateProductException()
+
+    statement = (
+        select(Product)
+        .where(Product.id.in_(product_ids))
+        .order_by(Product.id)
+        .with_for_update()
+    )
+    lock_products = session.exec(statement).all()
+
+    products: dict[int, Product] = {
+        product.id: product
+        for product in lock_products
+    }
+    
+    for item in order_data.items:
+        if item.product_id not in products:
+            raise ProductNotFoundException(item.product_id)
+
+        product = products[item.product_id]
+
+        if product.stock < item.quantity:
+            raise InsufficientStockException(item.product_id)
+
+    order = Order(
+        status=OrderStatus.PENDING,
+        user_id = user_id
+    )
+    session.add(order)
+    # insert order 但不 commit, 得到 order_id
+    session.flush()
+
+    assert order.id is not None
+
+    for item in order_data.items:
+        product = products[item.product_id]
+        product.stock -= item.quantity
+
+        order_item = OrderItem(
+            order_id=order.id,
+            product_id=item.product_id,
+            quantity=item.quantity
+        )
+
+        session.add(order_item)
+        order.items.append(order_item)
+
+    return OrderResult(
+        id = order.id,
+        status = order.status,
+        items = [
+            OrderItemResult(
+                item.id,
+                item.product_id,
+                item.quantity
+            )
+            for item in order.items
+        ]
+    )
 
 def create_order(
     order_data: OrderCreate,

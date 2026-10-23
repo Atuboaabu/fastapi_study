@@ -3,10 +3,11 @@ from typing import Annotated
 from fastapi import Path, Query, status, APIRouter
 
 from dependencies import SessionDep, ActiveUserDep
-from schemas import OrderCreate, OrderListResponse, OrderPublic
+from schemas import OrderCreate, OrderListResponse, OrderPublic, OrderItemPublic
 
-from services import orders
+from services import orders, transaction, result
 from enums import OrderStatus
+from session_factory import create_session
 
 router = APIRouter(
     prefix = "/orders",
@@ -22,11 +23,31 @@ router = APIRouter(
 def create_order(
     order_data: OrderCreate,
     user: ActiveUserDep,
-    session: SessionDep
 ):
     assert user.id is not None
 
-    return orders.create_order(order_data, user.id, session)
+    args = [order_data, user.id]
+
+    order_result: result.OrderResult | None = transaction.run_transaction(
+        create_session,
+        orders.create_order_operation,
+        args,
+        3
+    )
+
+    assert order_result is not None
+    return OrderPublic(
+        id = order_result.id,
+        status = order_result.status,
+        items = [
+            OrderItemPublic(
+                id = item.id,
+                product_id = item.product_id,
+                quantity = item.quantity
+            )
+            for item in order_result.items
+        ]
+    )
 
 # GET "/orders/{order_id}"
 @router.get(

@@ -14,7 +14,7 @@ def run_transaction(
     for attempt in range(max_attempts):
         with session_factory() as session:
             try:
-                result = operation(session, args)
+                result = operation(args, session)
                 session.commit()
                 return result
 
