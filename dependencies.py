@@ -18,7 +18,7 @@ def create_session()->Session:
 def get_seesion_factory()->SessionFactory:
     return create_session
 
-SessionFactoryDep = Annotated[SessionFactory, get_seesion_factory]
+SessionFactoryDep = Annotated[SessionFactory, Depends(get_seesion_factory)]
 
 def get_session():
     with Session(engine) as session:

@@ -42,7 +42,10 @@ def session(engine: Engine):
 
 @pytest.fixture
 def create_session(engine: Engine):
-    return Session(engine)
+    def _create_session()->Session:
+        return Session(engine)
+    
+    return _create_session
 
 @pytest.fixture
 def client(session: Session, create_session: SessionFactory):
