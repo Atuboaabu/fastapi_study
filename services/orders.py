@@ -73,7 +73,7 @@ def create_order_operation(
         )
 
         session.add(order_item)
-        order.items.append(order_item)
+        # order.items.append(order_item)
     session.flush()
 
     return OrderResult(

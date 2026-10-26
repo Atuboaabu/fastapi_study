@@ -41,18 +41,15 @@ def session(engine: Engine):
         yield session
 
 @pytest.fixture
-def create_session(engine: Engine):
-    def _create_session()->Session:
-        return Session(engine)
-    
-    return _create_session
-
-@pytest.fixture
-def client(session: Session, create_session: SessionFactory):
+def client(engine: Engine):
     def get_test_session():
-        yield session
-    
+        with Session(engine) as session:
+            yield session
+
     def get_test_session_factory():
+        def create_session():
+            return Session(engine)
+
         return create_session
 
     app.dependency_overrides[get_session] = get_test_session
