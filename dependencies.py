@@ -15,10 +15,10 @@ SessionFactory = Callable[[], Session]
 def create_session()->Session:
     return Session(engine)
 
-def get_seesion_factory()->SessionFactory:
+def get_session_factory()->SessionFactory:
     return create_session
 
-SessionFactoryDep = Annotated[SessionFactory, Depends(get_seesion_factory)]
+SessionFactoryDep = Annotated[SessionFactory, Depends(get_session_factory)]
 
 def get_session():
     with Session(engine) as session:

@@ -62,6 +62,7 @@ def create_order_operation(
 
     assert order.id is not None
 
+    created_items = []
     for item in order_data.items:
         product = products[item.product_id]
         product.stock -= item.quantity
@@ -73,8 +74,11 @@ def create_order_operation(
         )
 
         session.add(order_item)
-        # order.items.append(order_item)
+        created_items.append(order_item)
     session.flush()
+
+    for item in created_items:
+        assert item.id is not None
 
     return OrderResult(
         id = order.id,
@@ -85,7 +89,7 @@ def create_order_operation(
                 item.product_id,
                 item.quantity
             )
-            for item in order.items
+            for item in created_items
         ]
     )
 

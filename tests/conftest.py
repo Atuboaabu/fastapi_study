@@ -5,7 +5,7 @@ from sqlalchemy import Engine, event
 from fastapi.testclient import TestClient
 
 from main import app
-from dependencies import get_session, get_seesion_factory, SessionFactory
+from dependencies import get_session, get_session_factory, SessionFactory
 import models
 from security import hash_password, create_access_token
 
@@ -53,7 +53,7 @@ def client(engine: Engine):
         return create_session
 
     app.dependency_overrides[get_session] = get_test_session
-    app.dependency_overrides[get_seesion_factory] = get_test_session_factory
+    app.dependency_overrides[get_session_factory] = get_test_session_factory
 
     client = TestClient(app)
     yield client
