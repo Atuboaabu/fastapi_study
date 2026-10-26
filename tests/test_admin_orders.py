@@ -261,6 +261,7 @@ def test_admin_mark_order_paid_success(
     data = response.json()
 
     assert data["status"] == "paid"
+    assert data["user_id"] == customer.id
 
 def test_admin_mark_order_shipped_success(
     client,
@@ -308,6 +309,7 @@ def test_admin_mark_order_shipped_success(
     data = response.json()
 
     assert data["status"] == "paid"
+    assert data["user_id"] == customer.id
 
     response = client.post(
         f"/admin/orders/{order_id}/ship",
@@ -323,3 +325,4 @@ def test_admin_mark_order_shipped_success(
     data = response.json()
 
     assert data["status"] == "shipped"
+    assert data["user_id"] == customer.id
