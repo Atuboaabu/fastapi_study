@@ -11,6 +11,7 @@ class OrderItemResult:
 @dataclass(frozen=True)
 class OrderResult:
     id: int
+    user_id: int
     status: OrderStatus
     items: list[OrderItemResult]
 

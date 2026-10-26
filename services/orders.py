@@ -82,6 +82,7 @@ def create_order_operation(
 
     return OrderResult(
         id = order.id,
+        user_id = order.user_id,
         status = order.status,
         items = [
             OrderItemResult(
@@ -150,8 +151,9 @@ def mark_order_paid_operation(
     session.flush()
 
     return OrderResult(
-        order.id,
-        order.status,
+        id = order.id,
+        user_id = order.user_id,
+        status = order.status,
         items = [
             OrderItemResult(
                 item.id,
@@ -187,6 +189,7 @@ def mark_order_shipped_operation(
 
     return OrderResult(
         order.id,
+        order.user_id,
         order.status,
         items = [
             OrderItemResult(
@@ -245,6 +248,7 @@ def cancel_order_for_user_operation(
 
     return OrderResult(
         order.id,
+        order.user_id,
         order.status,
         items = [
             OrderItemResult(
@@ -281,6 +285,7 @@ def complete_order_for_user_operation(
 
     return OrderResult(
         order.id,
+        order.user_id,
         order.status,
         items = [
             OrderItemResult(

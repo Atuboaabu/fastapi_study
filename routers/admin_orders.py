@@ -77,7 +77,7 @@ def mark_order_paid(
 
     return AdminOrderPublic(
         id = order_result.id,
-        user_id = user.id,
+        user_id = order_result.user_id,
         status = order_result.status,
         items = [
             OrderItemPublic(
@@ -111,7 +111,7 @@ def mark_order_shipped(
 
     return AdminOrderPublic(
         id = order_result.id,
-        user_id = user.id,
+        user_id = order_result.user_id,
         status = order_result.status,
         items = [
             OrderItemPublic(
