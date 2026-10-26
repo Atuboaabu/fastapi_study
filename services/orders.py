@@ -18,8 +18,8 @@ from order_state import is_order_transition_allowed
 from services.result import OrderItemResult, OrderResult
 
 def create_order_operation(
+    session: Session,
     args: list,
-    session: Session
 ) -> OrderResult:
     [order_data, user_id] = args
 
@@ -74,6 +74,7 @@ def create_order_operation(
 
         session.add(order_item)
         order.items.append(order_item)
+    session.flush()
 
     return OrderResult(
         id = order.id,

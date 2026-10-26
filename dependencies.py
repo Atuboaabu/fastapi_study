@@ -3,10 +3,22 @@ from sqlmodel import Session
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from database import engine
+from collections.abc import Callable
 
 from models import User
 from security import decode_access_token
 from exceptions import InvalidTokenException, InactiveUserException, ForbiddenException
+
+
+SessionFactory = Callable[[], Session]
+
+def create_session()->Session:
+    return Session(engine)
+
+def get_seesion_factory()->SessionFactory:
+    return create_session
+
+SessionFactoryDep = Annotated[SessionFactory, get_seesion_factory]
 
 def get_session():
     with Session(engine) as session:

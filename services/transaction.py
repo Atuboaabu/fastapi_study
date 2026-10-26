@@ -1,6 +1,6 @@
 from sqlalchemy.exc import DBAPIError
 
-from session_factory import SessionFactory
+from dependencies import SessionFactory
 
 def run_transaction(
     session_factory: SessionFactory,
@@ -14,7 +14,7 @@ def run_transaction(
     for attempt in range(max_attempts):
         with session_factory() as session:
             try:
-                result = operation(args, session)
+                result = operation(session, args)
                 session.commit()
                 return result
 

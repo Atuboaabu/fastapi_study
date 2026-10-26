@@ -2,12 +2,11 @@ from typing import Annotated
 
 from fastapi import Path, Query, status, APIRouter
 
-from dependencies import SessionDep, ActiveUserDep
+from dependencies import SessionDep, ActiveUserDep, SessionFactoryDep
 from schemas import OrderCreate, OrderListResponse, OrderPublic, OrderItemPublic
 
 from services import orders, transaction, result
 from enums import OrderStatus
-from session_factory import create_session
 
 router = APIRouter(
     prefix = "/orders",
@@ -23,13 +22,14 @@ router = APIRouter(
 def create_order(
     order_data: OrderCreate,
     user: ActiveUserDep,
+    session_factory: SessionFactoryDep
 ):
     assert user.id is not None
 
     args = [order_data, user.id]
 
     order_result: result.OrderResult | None = transaction.run_transaction(
-        create_session,
+        session_factory,
         orders.create_order_operation,
         args,
         3

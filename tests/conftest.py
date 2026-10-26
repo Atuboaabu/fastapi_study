@@ -1,16 +1,16 @@
 import pytest
 from sqlmodel import SQLModel, Session, create_engine
 from sqlmodel.pool import StaticPool
-from sqlalchemy import event
+from sqlalchemy import Engine, event
 from fastapi.testclient import TestClient
 
 from main import app
-from dependencies import get_session
+from dependencies import get_session, get_seesion_factory, SessionFactory
 import models
 from security import hash_password, create_access_token
 
 @pytest.fixture
-def session():
+def engine():
     engine = create_engine(
         "sqlite://",
         connect_args={
@@ -31,18 +31,29 @@ def session():
         cursor.close()
 
     SQLModel.metadata.create_all(engine)
+    yield engine
 
-    with Session(engine) as session:
-        yield session
-    
     SQLModel.metadata.drop_all(engine)
 
 @pytest.fixture
-def client(session: Session):
+def session(engine: Engine):
+    with Session(engine) as session:
+        yield session
+
+@pytest.fixture
+def create_session(engine: Engine):
+    return Session(engine)
+
+@pytest.fixture
+def client(session: Session, create_session: SessionFactory):
     def get_test_session():
         yield session
     
+    def get_test_session_factory():
+        return create_session
+
     app.dependency_overrides[get_session] = get_test_session
+    app.dependency_overrides[get_seesion_factory] = get_test_session_factory
 
     client = TestClient(app)
     yield client
