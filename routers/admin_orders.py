@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Query, Path
 from typing import Annotated
 
-from schemas import AdminOrderPublic, AdminOrderListResponse
-from services import orders
+from schemas import AdminOrderPublic, AdminOrderListResponse, OrderItemPublic
+from services import orders, transaction
+from services.result import OrderResult
 
-from dependencies import SessionDep, AdminUserDep
+from dependencies import SessionDep, AdminUserDep, SessionFactoryDep
 from enums import OrderStatus
 
 router = APIRouter(
@@ -61,13 +62,31 @@ def get_all_orders(
 def mark_order_paid(
     order_id: Annotated[int, Path(gt = 0)],
     user: AdminUserDep,
-    session: SessionDep
+    session_factory: SessionFactoryDep
 ):
     assert user.id is not None
 
-    return orders.mark_order_paid(
-        order_id,
-        session
+    args = [order_id]
+    order_result: OrderResult | None = transaction.run_transaction(
+        session_factory,
+        orders.mark_order_paid_operation,
+        args,
+        3
+    )
+    assert order_result is not None
+
+    return AdminOrderPublic(
+        id = order_result.id,
+        user_id = user.id,
+        status = order_result.status,
+        items = [
+            OrderItemPublic(
+                id = item.id,
+                product_id = item.product_id,
+                quantity = item.quantity
+            )
+            for item in order_result.items
+        ]
     )
 
 @router.post(
@@ -77,11 +96,29 @@ def mark_order_paid(
 def mark_order_shipped(
     order_id: Annotated[int, Path(gt = 0)],
     user: AdminUserDep,
-    session: SessionDep
+    session_factory: SessionFactoryDep
 ):
     assert user.id is not None
 
-    return orders.mark_order_shipped(
-        order_id,
-        session
+    args = [order_id]
+    order_result: OrderResult | None = transaction.run_transaction(
+        session_factory,
+        orders.mark_order_shipped_operation,
+        args,
+        3
+    )
+    assert order_result is not None
+
+    return AdminOrderPublic(
+        id = order_result.id,
+        user_id = user.id,
+        status = order_result.status,
+        items = [
+            OrderItemPublic(
+                id = item.id,
+                product_id = item.product_id,
+                quantity = item.quantity
+            )
+            for item in order_result.items
+        ]
     )

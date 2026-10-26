@@ -84,6 +84,7 @@ def test_run_transaction_domain_except(
             args,
             3
         )
+    assert create_session_count == 2
 
 def test_run_transaction_dbapi_except_no_40001(
     engine,

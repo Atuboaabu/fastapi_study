@@ -93,75 +93,6 @@ def create_order_operation(
         ]
     )
 
-def create_order(
-    order_data: OrderCreate,
-    user_id: int,
-    session: Session
-) -> Order:
-    product_ids = [
-        item.product_id
-        for item in order_data.items
-    ]
-
-    if len(product_ids) != len(set(product_ids)):
-        raise DuplicateProductException()
-    
-    try:
-        statement = (
-            select(Product)
-            .where(Product.id.in_(product_ids))
-            .order_by(Product.id)
-            .with_for_update()
-        )
-
-        lock_products = session.exec(statement).all()
-
-        products: dict[int, Product] = {
-            product.id: product
-            for product in lock_products
-        }
-        
-        for item in order_data.items:
-            if item.product_id not in products:
-                raise ProductNotFoundException(item.product_id)
-
-            product = products[item.product_id]
-
-            if product.stock < item.quantity:
-                raise InsufficientStockException(item.product_id)
-    
-        order = Order(
-            status=OrderStatus.PENDING,
-            user_id = user_id
-        )
-        session.add(order)
-        # insert order 但不 commit, 得到 order_id
-        session.flush()
-
-        assert order.id is not None
-
-        for item in order_data.items:
-            product = products[item.product_id]
-            product.stock -= item.quantity
-
-            order_item = OrderItem(
-                order_id=order.id,
-                product_id=item.product_id,
-                quantity=item.quantity
-            )
-
-            session.add(order_item)
-            order.items.append(order_item)
-
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-
-    session.refresh(order)
-    
-    return order
-
 def get_order_for_user(
     order_id: int,
     user_id: int,
@@ -194,131 +125,172 @@ def get_order_by_id(
 
     return order
 
-def mark_order_paid(
-    order_id: int,
-    session: Session
-):
-    try:
-        order = session.exec(
-            select(Order)
-            .where(Order.id == order_id)
-            .with_for_update()
-        ).first()
+def mark_order_paid_operation(
+    session: Session,
+    args: list
+)->OrderResult:
+    assert len(args) == 1
 
-        if order is None:
-            raise OrderNotFoundException(order_id)
-        
-        if not is_order_transition_allowed(order.status, OrderStatus.PAID):
-            raise InvalidOrderStateTransitionException(order.status, OrderStatus.PAID)
+    order_id = args[0]
 
-        order.status = OrderStatus.PAID
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
+    order = session.exec(
+        select(Order)
+        .where(Order.id == order_id)
+        .with_for_update()
+    ).first()
 
-    session.refresh(order)
-    return order
+    if order is None:
+        raise OrderNotFoundException(order_id)
+    
+    if not is_order_transition_allowed(order.status, OrderStatus.PAID):
+        raise InvalidOrderStateTransitionException(order.status, OrderStatus.PAID)
 
-def mark_order_shipped(
-    order_id: int,
-    session: Session
-):
-    try:
-        order = session.exec(
-            select(Order)
-            .where(Order.id == order_id)
-            .with_for_update()
-        ).first()
+    order.status = OrderStatus.PAID
 
-        if order is None:
-            raise OrderNotFoundException(order_id)
-        
-        if not is_order_transition_allowed(order.status, OrderStatus.SHIPPED):
-            raise InvalidOrderStateTransitionException(order.status, OrderStatus.SHIPPED)
+    session.flush()
 
-        order.status = OrderStatus.SHIPPED
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-
-    session.refresh(order)
-    return order
-
-def cancel_order_for_user(
-    order_id: int,
-    user_id: int,
-    session: Session
-) -> Order:
-    try:
-        statement = select(Order).where(
-            Order.id == order_id,
-            Order.user_id == user_id
-        ).with_for_update()
-        order = session.exec(statement).first()
-
-        if order is None:
-            raise OrderNotFoundException(order_id)
-        
-        if not is_order_transition_allowed(order.status, OrderStatus.CANCELLED):
-            raise InvalidOrderStateTransitionException(order.status, OrderStatus.CANCELLED)
-        
-        product_ids = [
-            item.product_id
+    return OrderResult(
+        order.id,
+        order.status,
+        items = [
+            OrderItemResult(
+                item.id,
+                item.product_id,
+                item.quantity
+            )
             for item in order.items
         ]
+    )
 
-        lock_products = session.exec(
-            select(Product)
-            .where(
-                Product.id.in_(product_ids)
-            )
-            .order_by(Product.id)
-            .with_for_update()
-        ).all()
+def mark_order_shipped_operation(
+    session: Session,
+    args: list
+)->OrderResult:
+    assert len(args) == 1
 
-        products_dict = {
-            product.id: product
-            for product in lock_products
-        }
+    order_id = args[0]
 
-        for item in order.items:
-            products_dict[item.product_id].stock += item.quantity
-        order.status = OrderStatus.CANCELLED
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
+    order = session.exec(
+        select(Order)
+        .where(Order.id == order_id)
+        .with_for_update()
+    ).first()
 
-    return order
-
-def complete_order_for_user(
-    order_id: int,
-    user_id: int,
-    session: Session
-)->Order:
-    try:
-        statement = select(Order).where(
-            Order.id == order_id,
-            Order.user_id == user_id
-        ).with_for_update()
-        order = session.exec(statement).first()
-
-        if order is None:
-            raise OrderNotFoundException(order_id)
-        
-        if not is_order_transition_allowed(order.status, OrderStatus.COMPLETED):
-            raise InvalidOrderStateTransitionException(order.status, OrderStatus.COMPLETED)
+    if order is None:
+        raise OrderNotFoundException(order_id)
     
-        order.status = OrderStatus.COMPLETED
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
+    if not is_order_transition_allowed(order.status, OrderStatus.SHIPPED):
+        raise InvalidOrderStateTransitionException(order.status, OrderStatus.SHIPPED)
 
-    session.refresh(order)
-    return order
+    order.status = OrderStatus.SHIPPED
+    session.flush()
+
+    return OrderResult(
+        order.id,
+        order.status,
+        items = [
+            OrderItemResult(
+                item.id,
+                item.product_id,
+                item.quantity
+            )
+            for item in order.items
+        ]
+    )
+
+def cancel_order_for_user_operation(
+    session: Session,
+    args: list
+) -> OrderResult:
+    assert len(args) == 2
+
+    order_id = args[0]
+    user_id = args[1]
+
+    statement = select(Order).where(
+        Order.id == order_id,
+        Order.user_id == user_id
+    ).with_for_update()
+    order = session.exec(statement).first()
+
+    if order is None:
+        raise OrderNotFoundException(order_id)
+    
+    if not is_order_transition_allowed(order.status, OrderStatus.CANCELLED):
+        raise InvalidOrderStateTransitionException(order.status, OrderStatus.CANCELLED)
+    
+    product_ids = [
+        item.product_id
+        for item in order.items
+    ]
+
+    lock_products = session.exec(
+        select(Product)
+        .where(
+            Product.id.in_(product_ids)
+        )
+        .order_by(Product.id)
+        .with_for_update()
+    ).all()
+
+    products_dict = {
+        product.id: product
+        for product in lock_products
+    }
+
+    for item in order.items:
+        products_dict[item.product_id].stock += item.quantity
+    order.status = OrderStatus.CANCELLED
+    session.flush()
+
+    return OrderResult(
+        order.id,
+        order.status,
+        items = [
+            OrderItemResult(
+                item.id,
+                item.product_id,
+                item.quantity
+            )
+            for item in order.items
+        ]
+    )
+
+def complete_order_for_user_operation(
+    session: Session,
+    args: list
+)->OrderResult:
+    assert len(args) == 2
+
+    order_id = args[0]
+    user_id = args[1]
+    statement = select(Order).where(
+        Order.id == order_id,
+        Order.user_id == user_id
+    ).with_for_update()
+    order = session.exec(statement).first()
+
+    if order is None:
+        raise OrderNotFoundException(order_id)
+    
+    if not is_order_transition_allowed(order.status, OrderStatus.COMPLETED):
+        raise InvalidOrderStateTransitionException(order.status, OrderStatus.COMPLETED)
+
+    order.status = OrderStatus.COMPLETED
+    session.flush()
+
+    return OrderResult(
+        order.id,
+        order.status,
+        items = [
+            OrderItemResult(
+                item.id,
+                item.product_id,
+                item.quantity
+            )
+            for item in order.items
+        ]
+    )
 
 def get_orders_for_user(
     session: Session,

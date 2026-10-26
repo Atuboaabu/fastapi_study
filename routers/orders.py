@@ -102,14 +102,32 @@ def get_orders(
 def cancel_order(
     order_id: Annotated[int, Path(gt = 0)],
     user: ActiveUserDep,
-    session: SessionDep
+    session_factory: SessionFactoryDep
 ):
     assert user.id is not None
 
-    return orders.cancel_order_for_user(
-        order_id,
-        user.id,
-        session
+    args = [order_id, user.id]
+
+    order_result: result.OrderResult | None = transaction.run_transaction(
+        session_factory,
+        orders.cancel_order_for_user_operation,
+        args,
+        3
+    )
+
+    assert order_result is not None
+
+    return OrderPublic(
+        id = order_result.id,
+        status = order_result.status,
+        items = [
+            OrderItemPublic(
+                id = item.id,
+                product_id = item.product_id,
+                quantity = item.quantity
+            )
+            for item in order_result.items
+        ]
     )
 
 @router.post(
@@ -119,12 +137,30 @@ def cancel_order(
 def complete_order(
     order_id: Annotated[int, Path(gt=0)],
     user: ActiveUserDep,
-    session: SessionDep
+    session_factory: SessionFactoryDep
 ):
     assert user.id is not None
 
-    return orders.complete_order_for_user(
-        order_id,
-        user.id,
-        session
+    args = [order_id, user.id]
+
+    order_result: result.OrderResult | None = transaction.run_transaction(
+        session_factory,
+        orders.complete_order_for_user_operation,
+        args,
+        3
+    )
+
+    assert order_result is not None
+
+    return OrderPublic(
+        id = order_result.id,
+        status = order_result.status,
+        items = [
+            OrderItemPublic(
+                id = item.id,
+                product_id = item.product_id,
+                quantity = item.quantity
+            )
+            for item in order_result.items
+        ]
     )
