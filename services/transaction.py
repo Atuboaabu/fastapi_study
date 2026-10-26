@@ -1,6 +1,6 @@
 from sqlalchemy.exc import DBAPIError
 
-from dependencies import SessionFactory
+from session_factory import SessionFactory
 
 def run_transaction(
     session_factory: SessionFactory,
