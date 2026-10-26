@@ -3,9 +3,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 
 from schemas import UserCreate, UserPublic, Token
-from dependencies import SessionDep
+from dependencies import SessionDep, SessionFactoryDep
 
-from services import users
+from services import users, transaction
+from services.result import UserResult
 from security import create_access_token
 
 router = APIRouter(
@@ -20,11 +21,22 @@ router = APIRouter(
 )
 def register_user(
     user_data: UserCreate,
-    session: SessionDep
+    session_factory: SessionFactoryDep
 ):
-    return users.create_user(
-        user_data,
-        session
+    args = [user_data]
+
+    user_result: UserResult | None = transaction.run_transaction(
+        session_factory,
+        users.create_user_operation,
+        args,
+        3
+    )
+    assert user_result is not None
+    return UserPublic(
+        id = user_result.id,
+        username = user_result.username,
+        is_active = user_result.is_active,
+        role = user_result.role
     )
 
 @router.post(

@@ -13,3 +13,11 @@ class OrderResult:
     id: int
     status: OrderStatus
     items: list[OrderItemResult]
+
+@dataclass(frozen=True)
+class UserResult:
+    id: int
+    username: str
+    hashed_password: str
+    is_active: bool
+    role: str
