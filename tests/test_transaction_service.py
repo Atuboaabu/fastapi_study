@@ -7,7 +7,7 @@ from schemas import UserCreate
 from models import User, Product, Order, OrderItem, OutboxEvent
 from security import verify_password, hash_password
 from exceptions import UsernameExistsException
-from order_state import OrderStatus
+from enums import OrderStatus
 from sqlalchemy.exc import DBAPIError
 from psycopg.errors import DeadlockDetected, SerializationFailure
 
@@ -319,16 +319,21 @@ def test_run_transaction_mark_order_paid_success(
         assert event is not None
         assert event.event_type == "order.paid"
         assert event.aggregate_type == "order"
+        assert event.created_at is not None
+        assert event.processed_at is None
 
         assert event.payload["order_id"] == order_id
         assert event.payload["user_id"] == user_id
         assert event.payload["status"] == "paid"
 
+        order_db = session.get(Order, order_id)
+        assert order_db is not None
+        assert order_db.status == OrderStatus.PAID
+
     assert session_created_count == 4
 
 def test_run_transaction_mark_order_paid_exception(
-    engine,
-    monkeypatch
+    engine
 ):
     session_created_count = 0
     def create_session():
@@ -379,6 +384,10 @@ def test_run_transaction_mark_order_paid_exception(
         ).first()
 
         assert event is None
+
+        order_db = session.get(Order, order_id)
+        assert order_db is not None
+        assert order_db.status == OrderStatus.PENDING
 
     assert session_created_count == 4
     
