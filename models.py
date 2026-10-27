@@ -1,6 +1,9 @@
-from sqlmodel import SQLModel, Field, Relationship, Column
-from sqlalchemy import CheckConstraint
+from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import CheckConstraint, DateTime, Column, func
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import JSONB
+from typing import Any
+from datetime import datetime
 
 from enums import OrderStatus
 
@@ -124,4 +127,46 @@ class User(SQLModel, table = True):
 
     orders: list["Order"] = Relationship(
         back_populates = "user"
+    )
+
+class OutboxEvent(SQLModel, table = True):
+    __tablename__ = "outbox_events"
+    id: int | None = Field(
+        default = None,
+        primary_key = True
+    )
+
+    event_type: str = Field(
+        min_length = 1,
+        max_length = 50
+    )
+
+    aggregate_type: str = Field(
+        min_length = 1,
+        max_length = 50
+    )
+
+    aggregate_id: int = Field(
+        gt = 0
+    )
+
+    payload: dict[str, Any] = Field(
+        default_factory = dict,
+        sa_column = Column(JSONB)
+    )
+
+    created_at: datetime = Field(
+        sa_column = Column(
+            DateTime(timezone = True),
+            server_default = func.now(),
+            nullable = False
+        )
+    )
+
+    processed_at: datetime | None = Field(
+        default = None,
+        sa_column = Column(
+            DateTime(timezone = True),
+            nullable = True
+        )
     )
