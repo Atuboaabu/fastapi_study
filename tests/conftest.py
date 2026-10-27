@@ -5,7 +5,8 @@ from sqlalchemy import Engine, event
 from fastapi.testclient import TestClient
 
 from main import app
-from dependencies import get_session, get_session_factory, SessionFactory
+from dependencies import get_session, get_session_factory
+from session_factory import SessionFactory
 import models
 from security import hash_password, create_access_token
 

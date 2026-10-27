@@ -153,10 +153,11 @@ class OutboxEvent(SQLModel, table = True):
     payload: dict[str, Any] = Field(
         default_factory = dict,
         sa_column = Column(
-            JSON.with_variant(
+            JSON().with_variant(
                 JSONB(),
                 "postgresql"
-            )
+            ),
+            nullable = False
         )
     )
 
