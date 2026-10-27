@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import CheckConstraint, DateTime, Column, func
+from sqlalchemy import CheckConstraint, DateTime, Column, func, JSON
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import Any
@@ -152,7 +152,12 @@ class OutboxEvent(SQLModel, table = True):
 
     payload: dict[str, Any] = Field(
         default_factory = dict,
-        sa_column = Column(JSONB)
+        sa_column = Column(
+            JSON.with_variant(
+                JSONB(),
+                "postgresql"
+            )
+        )
     )
 
     created_at: datetime = Field(
@@ -167,6 +172,7 @@ class OutboxEvent(SQLModel, table = True):
         default = None,
         sa_column = Column(
             DateTime(timezone = True),
-            nullable = True
-        )
+            nullable = True,
+            index = True
+        ),
     )
