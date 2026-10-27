@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from sqlalchemy import func, distinct
 from sqlalchemy.orm import selectinload
 
-from models import Order, OrderItem, Product
+from models import Order, OrderItem, Product, OutboxEvent
 from schemas import OrderCreate
 from exceptions import (
     ProductNotFoundException,
@@ -147,6 +147,18 @@ def mark_order_paid_operation(
         raise InvalidOrderStateTransitionException(order.status, OrderStatus.PAID)
 
     order.status = OrderStatus.PAID
+
+    outbox_event = OutboxEvent(
+        event_type = "order.paid",
+        aggregate_type = "order",
+        aggregate_id = order.id,
+        payload = {
+            "order_id": order.id,
+            "user_id": order.user_id,
+            "status": order.status.value
+        }
+    )
+    session.add(outbox_event)
 
     session.flush()
 

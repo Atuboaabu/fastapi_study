@@ -1,12 +1,13 @@
-from sqlmodel import Session
+from sqlmodel import Session, select, func
 import pytest
 
-from services import transaction, users
-from services.result import UserResult
+from services import transaction, users, orders
+from services.result import UserResult, OrderResult
 from schemas import UserCreate
-from models import User
-from security import verify_password
+from models import User, Product, Order, OrderItem, OutboxEvent
+from security import verify_password, hash_password
 from exceptions import UsernameExistsException
+from order_state import OrderStatus
 from sqlalchemy.exc import DBAPIError
 from psycopg.errors import DeadlockDetected, SerializationFailure
 
@@ -220,3 +221,164 @@ def test_run_transaction_dbapi_except_40001_failed(
             3
         )
     assert create_session_count == 3
+
+def prepare_order_for_test(
+    session: Session
+):
+    product = Product(
+        sku = "TEST-SKU-01",
+        name = "TEST-PRODUCT-01",
+        price = 99.9,
+        stock = 100,
+        description = "Test Product 01"
+    )
+    session.add(product)
+    session.commit()
+    session.refresh(product)
+    assert product.id is not None
+
+    customer = User(
+        username = "Bob",
+        hashed_password = hash_password("password123"),
+        role = "customer"
+    )
+    session.add(customer)
+
+    session.commit()
+    session.refresh(customer)
+
+    assert customer.id is not None
+
+    order = Order(
+        user_id = customer.id,
+        status=OrderStatus.PENDING,
+    )
+    session.add(order)
+    session.flush()
+    assert order.id is not None
+
+    items = [
+        OrderItem(
+            order_id = order.id,
+            product_id = product.id,
+            quantity = 10
+        )
+    ]
+
+    for item in items:
+        session.add(item)
+    
+    session.commit()
+    return product, customer, order
+
+def test_run_transaction_mark_order_paid_success(
+    engine
+):
+    session_created_count = 0
+    def create_session():
+        nonlocal session_created_count
+        session_created_count += 1
+        return Session(engine)
+    
+    with create_session() as session:
+        event_count_old = session.exec(
+            select(func.count()).select_from(OutboxEvent)
+        ).one()
+    assert session_created_count == 1
+    
+    with create_session() as session:
+        _, customer, order = prepare_order_for_test(session)
+        order_id = order.id
+        user_id = customer.id
+    assert session_created_count == 2
+
+    args = [order_id]
+    order_result: OrderResult | None = transaction.run_transaction(
+        create_session,
+        orders.mark_order_paid_operation,
+        args,
+        3
+    )
+    assert session_created_count == 3
+
+    assert order_result is not None
+    assert order_result.id == order_id
+    assert order_result.status == OrderStatus.PAID
+    
+    with create_session() as session:
+        event_count_new = session.exec(
+            select(func.count()).select_from(OutboxEvent)
+        ).one()
+
+        assert event_count_new - event_count_old == 1
+
+        event = session.exec(
+            select(OutboxEvent).where(OutboxEvent.aggregate_id == order_id)
+        ).first()
+
+        assert event is not None
+        assert event.event_type == "order.paid"
+        assert event.aggregate_type == "order"
+
+        assert event.payload["order_id"] == order_id
+        assert event.payload["user_id"] == user_id
+        assert event.payload["status"] == "paid"
+
+    assert session_created_count == 4
+
+def test_run_transaction_mark_order_paid_exception(
+    engine,
+    monkeypatch
+):
+    session_created_count = 0
+    def create_session():
+        nonlocal session_created_count
+        session_created_count += 1
+        return Session(engine)
+    
+    with create_session() as session:
+        event_count_old = session.exec(
+            select(func.count()).select_from(OutboxEvent)
+        ).one()
+    assert session_created_count == 1
+    
+    with create_session() as session:
+        _, customer, order = prepare_order_for_test(session)
+        order_id = order.id
+        user_id = customer.id
+    assert session_created_count == 2
+
+    def mark_order_paid_except_operation(
+        session: Session,
+        args: list
+    ):
+        result = orders.mark_order_paid_operation(session, args)
+        raise RuntimeError()
+    
+    args = [order_id]
+    with pytest.raises(
+        RuntimeError
+    ):
+        order_result: OrderResult | None = transaction.run_transaction(
+            create_session,
+            mark_order_paid_except_operation,
+            args,
+            3
+        )               
+    assert session_created_count == 3
+
+    with create_session() as session:
+        event_count_new = session.exec(
+            select(func.count()).select_from(OutboxEvent)
+        ).one()
+
+        assert event_count_new - event_count_old == 0
+
+        event = session.exec(
+            select(OutboxEvent).where(OutboxEvent.aggregate_id == order_id)
+        ).first()
+
+        assert event is None
+
+    assert session_created_count == 4
+    
