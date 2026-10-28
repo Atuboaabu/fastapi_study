@@ -1,19 +1,26 @@
-from sqlmodel import Session, select
-from datetime import datetime, timezone
-
+from sqlmodel import Session
+from sqlalchemy.dialects.postgresql import insert
 from models import InboxEvent
 
 def process_inbox_event_operation(
     session: Session,
     args: list
 ):
-    assert len(args) == 2
+    assert len(args) == 4
     event_id = args[0]
     event_type = args[1]
-    
-    inbox_event = InboxEvent(
+    handler = args[2]
+    payload = args[3]
+
+    statement = insert(InboxEvent).values(
         event_id=event_id,
         event_type=event_type,
-    )
-    session.add(inbox_event)
-    session.flush()
+    ).on_conflict_do_nothing(
+        index_elements = [InboxEvent.event_id]
+    ).returning(InboxEvent.id)
+
+    inbox_event_id = session.exec(statement).one()
+
+    if inbox_event_id is not None:
+        handler(session, payload)
+    
