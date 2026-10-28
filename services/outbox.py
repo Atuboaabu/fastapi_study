@@ -20,8 +20,7 @@ def process_one_outbox_event_operation(
     if outbox_event is None:
         return 0
     
-    if not processer(outbox_event):
-        return 0
+    processer(outbox_event)
 
     outbox_event.processed_at = datetime.now(timezone.utc)
 
