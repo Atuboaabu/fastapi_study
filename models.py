@@ -177,3 +177,29 @@ class OutboxEvent(SQLModel, table = True):
             index = True
         ),
     )
+
+class InboxEvent(SQLModel, table = True):
+    __tablename__ = "inbox_events"
+
+    id: int | None = Field(
+        default=None,
+        primary_key=True
+    )
+
+    event_id: int = Field(
+        nullable=False,
+        unique=True
+    )
+
+    event_type: str = Field(
+        max_length=50,
+        nullable=False
+    )
+
+    processed_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone = True),
+            server_default = func.now(),
+            nullable = False
+        )
+    )
