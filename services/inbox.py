@@ -19,8 +19,11 @@ def process_inbox_event_operation(
         index_elements = [InboxEvent.event_id]
     ).returning(InboxEvent.id)
 
-    inbox_event_id = session.exec(statement).one()
+    inbox_event_id = session.exec(statement).one_or_none()
 
-    if inbox_event_id is not None:
-        handler(session, payload)
+    if inbox_event_id is None:
+        return "already_processed"
+        
+    handler(session, payload)
+    return "processed"
     
