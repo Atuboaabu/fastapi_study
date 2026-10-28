@@ -1,7 +1,7 @@
 from sqlmodel import Session, select, func
 import pytest
 
-from services import transaction, users, orders
+from services import transaction, users, orders, outbox
 from services.result import UserResult, OrderResult
 from schemas import UserCreate
 from models import User, Product, Order, OrderItem, OutboxEvent
@@ -438,6 +438,7 @@ def test_run_transaction_mark_order_paid_fail_first_attempt(
         3
     )               
     assert session_created_count == 4
+    assert operation_exec_count == 2
 
     assert order_result is not None
     assert order_result.id == order_id
@@ -469,4 +470,183 @@ def test_run_transaction_mark_order_paid_fail_first_attempt(
         assert order_db.status == OrderStatus.PAID
 
     assert session_created_count == 5
+
+def test_run_transaction_process_outboxevent_success(
+    engine
+):
+    session_created_count = 0
+    def create_session():
+        nonlocal session_created_count
+        session_created_count += 1
+        return Session(engine)
+    
+    with create_session() as session:
+        _, customer, order = prepare_order_for_test(session)
+        order_id = order.id
+        user_id = customer.id
+
+    args = [order_id]
+    order_result: OrderResult | None = transaction.run_transaction(
+        create_session,
+        orders.mark_order_paid_operation,
+        args,
+        3
+    )
+
+    assert order_result is not None
+    assert order_result.id == order_id
+    assert order_result.status == OrderStatus.PAID
+    
+    with create_session() as session:
+        event = session.exec(
+            select(OutboxEvent).where(OutboxEvent.aggregate_id == order_id)
+        ).first()
+
+        assert event is not None
+        assert event.event_type == "order.paid"
+        assert event.aggregate_type == "order"
+        assert event.created_at is not None
+        assert event.processed_at is None
+
+        assert event.payload["order_id"] == order_id
+        assert event.payload["user_id"] == user_id
+        assert event.payload["status"] == "paid"
+    
+    outbox.external_messages.clear()
+    
+    assert len(outbox.external_messages) == 0
+
+    args = []
+    event_result: int | None = transaction.run_transaction(
+        create_session,
+        outbox.process_one_outbox_event_operation,
+        args,
+        3
+    )
+    assert event_result == 1
+    assert len(outbox.external_messages) == 1
+
+    with create_session() as session:
+        event = session.exec(
+            select(OutboxEvent).where(OutboxEvent.aggregate_id == order_id)
+        ).first()
+
+        assert event is not None
+        assert event.event_type == "order.paid"
+        assert event.aggregate_type == "order"
+        assert event.created_at is not None
+        assert event.processed_at is not None
+
+        assert event.payload["order_id"] == order_id
+        assert event.payload["user_id"] == user_id
+        assert event.payload["status"] == "paid"
+    
+def test_run_transaction_process_outboxevent_noevent(
+    engine
+):
+    session_created_count = 0
+    def create_session():
+        nonlocal session_created_count
+        session_created_count += 1
+        return Session(engine)
+    
+    with create_session() as session:
+        _, customer, order = prepare_order_for_test(session)
+        order_id = order.id
+        user_id = customer.id
+    
+    outbox.external_messages.clear()
+    assert len(outbox.external_messages) == 0
+
+    args = []
+    event_result: int | None = transaction.run_transaction(
+        create_session,
+        outbox.process_one_outbox_event_operation,
+        args,
+        3
+    )
+    assert event_result == 0
+    assert len(outbox.external_messages) == 0
+
+def test_run_transaction_process_outboxevent_exception(
+    engine
+):
+    session_created_count = 0
+    def create_session():
+        nonlocal session_created_count
+        session_created_count += 1
+        return Session(engine)
+    
+    with create_session() as session:
+        _, customer, order = prepare_order_for_test(session)
+        order_id = order.id
+        user_id = customer.id
+
+    args = [order_id]
+    order_result: OrderResult | None = transaction.run_transaction(
+        create_session,
+        orders.mark_order_paid_operation,
+        args,
+        3
+    )
+
+    assert order_result is not None
+    assert order_result.id == order_id
+    assert order_result.status == OrderStatus.PAID
+    
+    with create_session() as session:
+        event = session.exec(
+            select(OutboxEvent).where(OutboxEvent.aggregate_id == order_id)
+        ).first()
+
+        assert event is not None
+        assert event.event_type == "order.paid"
+        assert event.aggregate_type == "order"
+        assert event.created_at is not None
+        assert event.processed_at is None
+
+        assert event.payload["order_id"] == order_id
+        assert event.payload["user_id"] == user_id
+        assert event.payload["status"] == "paid"
+    
+    def process_one_outbox_event_operation_except(
+        session: Session,
+        args: list
+    ):
+        result = outbox.process_one_outbox_event_operation(
+            session,
+            args
+        )
+        raise RuntimeError()
+    
+    outbox.external_messages.clear()
+    assert len(outbox.external_messages) == 0
+
+    with pytest.raises(
+        RuntimeError
+    ):
+        args = []
+        event_result: int | None = transaction.run_transaction(
+            create_session,
+            process_one_outbox_event_operation_except,
+            args,
+            3
+        )
+
+    assert len(outbox.external_messages) == 1
+
+    with create_session() as session:
+        event = session.exec(
+            select(OutboxEvent).where(OutboxEvent.aggregate_id == order_id)
+        ).first()
+
+        assert event is not None
+        assert event.event_type == "order.paid"
+        assert event.aggregate_type == "order"
+        assert event.created_at is not None
+        assert event.processed_at is None
+
+        assert event.payload["order_id"] == order_id
+        assert event.payload["user_id"] == user_id
+        assert event.payload["status"] == "paid"
     
