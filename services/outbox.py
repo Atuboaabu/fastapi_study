@@ -14,7 +14,7 @@ def process_one_outbox_event_operation(
         OutboxEvent.processed_at.is_(None)
     ).order_by(
         OutboxEvent.id
-    ).limit(1)
+    ).limit(1).with_for_update(skip_locked=True)
     outbox_event = session.exec(statement).first()
 
     if outbox_event is None:

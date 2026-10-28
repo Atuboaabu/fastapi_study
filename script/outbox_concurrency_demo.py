@@ -1,4 +1,4 @@
-from threading import Barrier, Thread
+from threading import Thread, Event
 from sqlmodel import select
 
 from script.test_utils import create_test_order
@@ -17,14 +17,15 @@ order_result = transaction.run_transaction(
     3
 )
 
-barrier = Barrier(2)
+event1 = Event()
+event2 = Event()
 def sender(outbox_event: OutboxEvent):
-    barrier.wait()
-
+    event2.set()
+    event1.wait()
     print(f"send msg: event {outbox_event.aggregate_id} executed! aggregate_type: {outbox_event.aggregate_type}")
 
 args = [sender]
-def worker(
+def worker_1(
     worker_name: str
 ):
     print(f"{worker_name} start work")
@@ -35,15 +36,28 @@ def worker(
         3
     )
 
+def worker_2(
+    worker_name: str
+):
+    print(f"{worker_name} start work")
+    result = transaction.run_transaction(
+        create_session,
+        outbox.process_one_outbox_event_operation,
+        args,
+        3
+    )
+    event1.set()
+
 t1 = Thread(
-    target=worker,
+    target=worker_1,
     args = ("worker-1", )
 )
 t2 = Thread(
-    target=worker,
+    target=worker_2,
     args = ("worker-2", )
 )
 t1.start()
+event2.wait()
 t2.start()
 
 t1.join()

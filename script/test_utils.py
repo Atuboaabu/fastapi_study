@@ -86,7 +86,10 @@ def create_test_order(
         ).first()
 
         if order is not None:
-            return order
+            for item in order.items:
+                session.delete(item)
+            session.delete(order)
+            session.commit()
 
         order = Order(
             user_id = user_id,
