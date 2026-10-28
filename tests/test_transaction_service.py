@@ -512,11 +512,19 @@ def test_run_transaction_process_outboxevent_success(
         assert event.payload["user_id"] == user_id
         assert event.payload["status"] == "paid"
     
-    outbox.external_messages.clear()
+    external_messages = []
+    def fake_sender(
+        outbox_event: OutboxEvent
+    ):
+        nonlocal external_messages
+        external_messages.append(f"event: {outbox_event}")
+        return True
     
-    assert len(outbox.external_messages) == 0
+    external_messages.clear()
+    
+    assert len(external_messages) == 0
 
-    args = []
+    args = [fake_sender]
     event_result: int | None = transaction.run_transaction(
         create_session,
         outbox.process_one_outbox_event_operation,
@@ -524,7 +532,7 @@ def test_run_transaction_process_outboxevent_success(
         3
     )
     assert event_result == 1
-    assert len(outbox.external_messages) == 1
+    assert len(external_messages) == 1
 
     with create_session() as session:
         event = session.exec(
@@ -555,10 +563,19 @@ def test_run_transaction_process_outboxevent_noevent(
         order_id = order.id
         user_id = customer.id
     
-    outbox.external_messages.clear()
-    assert len(outbox.external_messages) == 0
+    external_messages = []
+    def fake_sender(
+        outbox_event: OutboxEvent
+    ):
+        nonlocal external_messages
+        external_messages.append(f"event: {outbox_event}")
+        return True
+    
+    external_messages.clear()
+    
+    assert len(external_messages) == 0
 
-    args = []
+    args = [fake_sender]
     event_result: int | None = transaction.run_transaction(
         create_session,
         outbox.process_one_outbox_event_operation,
@@ -566,9 +583,89 @@ def test_run_transaction_process_outboxevent_noevent(
         3
     )
     assert event_result == 0
-    assert len(outbox.external_messages) == 0
+    assert len(external_messages) == 0
 
 def test_run_transaction_process_outboxevent_exception(
+    engine
+):
+    session_created_count = 0
+    def create_session():
+        nonlocal session_created_count
+        session_created_count += 1
+        return Session(engine)
+    
+    with create_session() as session:
+        _, customer, order = prepare_order_for_test(session)
+        order_id = order.id
+        user_id = customer.id
+
+    args = [order_id]
+    order_result: OrderResult | None = transaction.run_transaction(
+        create_session,
+        orders.mark_order_paid_operation,
+        args,
+        3
+    )
+
+    assert order_result is not None
+    assert order_result.id == order_id
+    assert order_result.status == OrderStatus.PAID
+    
+    with create_session() as session:
+        event = session.exec(
+            select(OutboxEvent).where(OutboxEvent.aggregate_id == order_id)
+        ).first()
+
+        assert event is not None
+        assert event.event_type == "order.paid"
+        assert event.aggregate_type == "order"
+        assert event.created_at is not None
+        assert event.processed_at is None
+
+        assert event.payload["order_id"] == order_id
+        assert event.payload["user_id"] == user_id
+        assert event.payload["status"] == "paid"
+    
+    external_messages = []
+    def fake_sender(
+        outbox_event: OutboxEvent
+    ):
+        raise RuntimeError()
+    
+    external_messages.clear()
+    
+    assert len(external_messages) == 0
+
+    args = [fake_sender]
+
+    with pytest.raises(
+        RuntimeError
+    ):
+        event_result: int | None = transaction.run_transaction(
+            create_session,
+            outbox.process_one_outbox_event_operation,
+            args,
+            3
+        )
+
+    assert len(external_messages) == 0
+
+    with create_session() as session:
+        event = session.exec(
+            select(OutboxEvent).where(OutboxEvent.aggregate_id == order_id)
+        ).first()
+
+        assert event is not None
+        assert event.event_type == "order.paid"
+        assert event.aggregate_type == "order"
+        assert event.created_at is not None
+        assert event.processed_at is None
+
+        assert event.payload["order_id"] == order_id
+        assert event.payload["user_id"] == user_id
+        assert event.payload["status"] == "paid"
+
+def test_run_transaction_process_outboxevent_exception_after(
     engine
 ):
     session_created_count = 0
@@ -619,13 +716,22 @@ def test_run_transaction_process_outboxevent_exception(
         )
         raise RuntimeError()
     
-    outbox.external_messages.clear()
-    assert len(outbox.external_messages) == 0
+    external_messages = []
+    def fake_sender(
+        outbox_event: OutboxEvent
+    ):
+        nonlocal external_messages
+        external_messages.append(f"event: {outbox_event}")
+        return True
+    
+    external_messages.clear()
+    
+    assert len(external_messages) == 0
 
+    args = [fake_sender]
     with pytest.raises(
         RuntimeError
     ):
-        args = []
         event_result: int | None = transaction.run_transaction(
             create_session,
             process_one_outbox_event_operation_except,
@@ -633,7 +739,7 @@ def test_run_transaction_process_outboxevent_exception(
             3
         )
 
-    assert len(outbox.external_messages) == 1
+    assert len(external_messages) == 1
 
     with create_session() as session:
         event = session.exec(
