@@ -207,10 +207,12 @@ class InboxEvent(SQLModel, table = True):
 class NotificationJob(SQLModel, table = True):
     __tablename__ = "notification_jobs"
 
-    __table_args__ = UniqueConstraint(
-        "event_id",
-        "job_type",
-        name = "uq_notification_jobs_event_id_job_type"
+    __table_args__ = (
+        UniqueConstraint(
+            "event_id",
+            "job_type",
+            name = "uq_notification_jobs_event_id_job_type"
+        ),
     )
 
     id: int | None = Field(
@@ -238,7 +240,7 @@ class NotificationJob(SQLModel, table = True):
         )
     )
 
-    reated_at: datetime = Field(
+    created_at: datetime = Field(
         sa_column = Column(
             DateTime(timezone = True),
             server_default = func.now(),
