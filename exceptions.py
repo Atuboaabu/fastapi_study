@@ -47,3 +47,9 @@ class InvalidOrderStateTransitionException(Exception):
     ):
         self.current_status = current_status
         self.dest_status = dest_status
+
+class RetryableNotificationException(Exception):
+    pass
+
+class PermanentNotificationException(Exception):
+    pass
