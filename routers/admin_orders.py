@@ -67,7 +67,7 @@ def mark_order_paid(
     assert user.id is not None
 
     args = [order_id]
-    order_result: OrderResult | None = transaction.run_transaction(
+    order_result: OrderResult | None = transaction.run_transaction_with_retry(
         session_factory,
         orders.mark_order_paid_operation,
         args,
@@ -101,7 +101,7 @@ def mark_order_shipped(
     assert user.id is not None
 
     args = [order_id]
-    order_result: OrderResult | None = transaction.run_transaction(
+    order_result: OrderResult | None = transaction.run_transaction_with_retry(
         session_factory,
         orders.mark_order_shipped_operation,
         args,

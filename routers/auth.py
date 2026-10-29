@@ -25,7 +25,7 @@ def register_user(
 ):
     args = [user_data]
 
-    user_result: UserResult | None = transaction.run_transaction(
+    user_result: UserResult | None = transaction.run_transaction_with_retry(
         session_factory,
         users.create_user_operation,
         args,

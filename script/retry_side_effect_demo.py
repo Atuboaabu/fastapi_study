@@ -87,7 +87,7 @@ user_data = UserCreate(
     password = "atubo123"
 )
 args = [user_data]
-transaction.run_transaction(
+transaction.run_transaction_with_retry(
     session_factory,
     create_user_operation,
     args,

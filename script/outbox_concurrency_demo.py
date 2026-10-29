@@ -10,7 +10,7 @@ from models import OutboxEvent
 order = create_test_order()
 
 args = [order.id]
-order_result = transaction.run_transaction(
+order_result = transaction.run_transaction_with_retry(
     create_session,
     orders.mark_order_paid_operation,
     args,
@@ -29,7 +29,7 @@ def worker_1(
     worker_name: str
 ):
     print(f"{worker_name} start work")
-    result = transaction.run_transaction(
+    result = transaction.run_transaction_with_retry(
         create_session,
         outbox.process_one_outbox_event_operation,
         args,
@@ -40,7 +40,7 @@ def worker_2(
     worker_name: str
 ):
     print(f"{worker_name} start work")
-    result = transaction.run_transaction(
+    result = transaction.run_transaction_with_retry(
         create_session,
         outbox.process_one_outbox_event_operation,
         args,

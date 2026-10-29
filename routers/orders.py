@@ -28,7 +28,7 @@ def create_order(
 
     args = [order_data, user.id]
 
-    order_result: result.OrderResult | None = transaction.run_transaction(
+    order_result: result.OrderResult | None = transaction.run_transaction_with_retry(
         session_factory,
         orders.create_order_operation,
         args,
@@ -108,7 +108,7 @@ def cancel_order(
 
     args = [order_id, user.id]
 
-    order_result: result.OrderResult | None = transaction.run_transaction(
+    order_result: result.OrderResult | None = transaction.run_transaction_with_retry(
         session_factory,
         orders.cancel_order_for_user_operation,
         args,
@@ -143,7 +143,7 @@ def complete_order(
 
     args = [order_id, user.id]
 
-    order_result: result.OrderResult | None = transaction.run_transaction(
+    order_result: result.OrderResult | None = transaction.run_transaction_with_retry(
         session_factory,
         orders.complete_order_for_user_operation,
         args,

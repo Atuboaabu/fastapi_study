@@ -24,7 +24,7 @@ def test_run_transaction_success(
     
     args = [user_data]
 
-    user_result: UserResult | None = transaction.run_transaction(
+    user_result: UserResult | None = transaction.run_transaction_with_retry(
         create_session,
         users.create_user_operation,
         args,
@@ -62,7 +62,7 @@ def test_run_transaction_domain_except(
     
     args = [user_data]
 
-    user_result: UserResult | None = transaction.run_transaction(
+    user_result: UserResult | None = transaction.run_transaction_with_retry(
         create_session,
         users.create_user_operation,
         args,
@@ -79,7 +79,7 @@ def test_run_transaction_domain_except(
     with pytest.raises(
         UsernameExistsException
     ):
-        user_result_dup: UserResult | None = transaction.run_transaction(
+        user_result_dup: UserResult | None = transaction.run_transaction_with_retry(
             create_session,
             users.create_user_operation,
             args,
@@ -123,7 +123,7 @@ def test_run_transaction_dbapi_except_no_40001(
     with pytest.raises(
         DBAPIError
     ):
-        user_result: UserResult | None = transaction.run_transaction(
+        user_result: UserResult | None = transaction.run_transaction_with_retry(
             create_session,
             users.create_user_operation,
             args,
@@ -165,7 +165,7 @@ def test_run_transaction_dbapi_except_40001_success(
     
     args = [user_data]
 
-    user_result: UserResult | None = transaction.run_transaction(
+    user_result: UserResult | None = transaction.run_transaction_with_retry(
         create_session,
         users.create_user_operation,
         args,
@@ -214,7 +214,7 @@ def test_run_transaction_dbapi_except_40001_failed(
     with pytest.raises(
         DBAPIError
     ):
-        user_result: UserResult | None = transaction.run_transaction(
+        user_result: UserResult | None = transaction.run_transaction_with_retry(
             create_session,
             users.create_user_operation,
             args,
@@ -293,7 +293,7 @@ def test_run_transaction_mark_order_paid_success(
     assert session_created_count == 2
 
     args = [order_id]
-    order_result: OrderResult | None = transaction.run_transaction(
+    order_result: OrderResult | None = transaction.run_transaction_with_retry(
         create_session,
         orders.mark_order_paid_operation,
         args,
@@ -364,7 +364,7 @@ def test_run_transaction_mark_order_paid_exception(
     with pytest.raises(
         RuntimeError
     ):
-        order_result: OrderResult | None = transaction.run_transaction(
+        order_result: OrderResult | None = transaction.run_transaction_with_retry(
             create_session,
             mark_order_paid_except_operation,
             args,
@@ -431,7 +431,7 @@ def test_run_transaction_mark_order_paid_fail_first_attempt(
         return result
 
     args = [order_id]
-    order_result: OrderResult | None = transaction.run_transaction(
+    order_result: OrderResult | None = transaction.run_transaction_with_retry(
         create_session,
         mark_order_paid_except_operation,
         args,
@@ -486,7 +486,7 @@ def test_run_transaction_process_outboxevent_success(
         user_id = customer.id
 
     args = [order_id]
-    order_result: OrderResult | None = transaction.run_transaction(
+    order_result: OrderResult | None = transaction.run_transaction_with_retry(
         create_session,
         orders.mark_order_paid_operation,
         args,
@@ -525,7 +525,7 @@ def test_run_transaction_process_outboxevent_success(
     assert len(external_messages) == 0
 
     args = [fake_sender]
-    event_result: int | None = transaction.run_transaction(
+    event_result: int | None = transaction.run_transaction_with_retry(
         create_session,
         outbox.process_one_outbox_event_operation,
         args,
@@ -576,7 +576,7 @@ def test_run_transaction_process_outboxevent_noevent(
     assert len(external_messages) == 0
 
     args = [fake_sender]
-    event_result: int | None = transaction.run_transaction(
+    event_result: int | None = transaction.run_transaction_with_retry(
         create_session,
         outbox.process_one_outbox_event_operation,
         args,
@@ -600,7 +600,7 @@ def test_run_transaction_process_outboxevent_exception(
         user_id = customer.id
 
     args = [order_id]
-    order_result: OrderResult | None = transaction.run_transaction(
+    order_result: OrderResult | None = transaction.run_transaction_with_retry(
         create_session,
         orders.mark_order_paid_operation,
         args,
@@ -641,7 +641,7 @@ def test_run_transaction_process_outboxevent_exception(
     with pytest.raises(
         RuntimeError
     ):
-        event_result: int | None = transaction.run_transaction(
+        event_result: int | None = transaction.run_transaction_with_retry(
             create_session,
             outbox.process_one_outbox_event_operation,
             args,
@@ -680,7 +680,7 @@ def test_run_transaction_process_outboxevent_exception_after(
         user_id = customer.id
 
     args = [order_id]
-    order_result: OrderResult | None = transaction.run_transaction(
+    order_result: OrderResult | None = transaction.run_transaction_with_retry(
         create_session,
         orders.mark_order_paid_operation,
         args,
@@ -732,7 +732,7 @@ def test_run_transaction_process_outboxevent_exception_after(
     with pytest.raises(
         RuntimeError
     ):
-        event_result: int | None = transaction.run_transaction(
+        event_result: int | None = transaction.run_transaction_with_retry(
             create_session,
             process_one_outbox_event_operation_except,
             args,
