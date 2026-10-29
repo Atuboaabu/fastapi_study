@@ -1,5 +1,4 @@
 from sqlalchemy.exc import DBAPIError
-from sqlmodel import Session
 
 from session_factory import SessionFactory
 
@@ -34,15 +33,16 @@ def run_transaction_with_retry(
                 raise
 
 def run_transaction_once(
-    session: Session,
+    session_factory: SessionFactory,
     operation,
     args,
 ):
-    try:
-        result = operation(session, args)
-        session.commit()
-        return result
+    with session_factory() as session:
+        try:
+            result = operation(session, args)
+            session.commit()
+            return result
 
-    except Exception:
-        session.rollback()
-        raise
+        except Exception:
+            session.rollback()
+            raise
