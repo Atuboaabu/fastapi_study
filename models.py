@@ -213,6 +213,14 @@ class NotificationJob(SQLModel, table = True):
             "job_type",
             name = "uq_notification_jobs_event_id_job_type"
         ),
+        CheckConstraint(
+            "retry_count >= 0",
+            name = "ck_notification_jobs_retry_count_positive"
+        ),
+        CheckConstraint(
+            "NOT (processed_at IS NOT NULL AND failed_at IS NOT NULL)",
+            name = "ck_notification_jobs_processed_failed_not_null_together"
+        )
     )
 
     id: int | None = Field(
@@ -272,7 +280,7 @@ class NotificationJob(SQLModel, table = True):
 
     last_error: str | None = Field(
         default = None,
-        max_length = 50,
+        max_length = 500,
         nullable = True
     )
 
