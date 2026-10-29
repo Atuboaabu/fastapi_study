@@ -247,3 +247,12 @@ class NotificationJob(SQLModel, table = True):
             nullable = False
         )
     )
+
+    processed_at: datetime | None = Field(
+        default = None,
+        sa_column = Column(
+            DateTime(timezone = True),
+            nullable = True,
+            index = True
+        ),
+    )
