@@ -23,7 +23,9 @@ def process_inbox_event_operation(
 
     if inbox_event_id is None:
         return "already_processed"
-        
-    handler(session, payload)
+    
+    handler_payload = payload
+    handler_payload["event_id"] = event_id
+    handler(session, handler_payload)
     return "processed"
     

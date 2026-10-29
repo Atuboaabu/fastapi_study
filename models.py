@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import CheckConstraint, DateTime, Column, func, JSON
+from sqlalchemy import CheckConstraint, DateTime, Column, func, JSON, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import Any
@@ -198,6 +198,48 @@ class InboxEvent(SQLModel, table = True):
 
     processed_at: datetime = Field(
         sa_column=Column(
+            DateTime(timezone = True),
+            server_default = func.now(),
+            nullable = False
+        )
+    )
+
+class NotificationJob(SQLModel, table = True):
+    __tablename__ = "notification_jobs"
+
+    __table_args__ = UniqueConstraint(
+        "event_id",
+        "job_type",
+        name = "uq_notification_jobs_event_id_job_type"
+    )
+
+    id: int | None = Field(
+        default = None,
+        primary_key = True
+    )
+
+    event_id: int = Field(
+        nullable = False
+    )
+
+    job_type: str = Field(
+        max_length = 50,
+        nullable = False
+    )
+
+    payload: dict[str, Any] = Field(
+        default_factory = dict,
+        sa_column = Column(
+            JSON().with_variant(
+                JSONB(),
+                "postgresql"
+            ),
+            nullable = False
+        )
+    )
+
+    reated_at: datetime = Field(
+        sa_column = Column(
             DateTime(timezone = True),
             server_default = func.now(),
             nullable = False
