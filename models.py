@@ -215,7 +215,7 @@ class NotificationJob(SQLModel, table = True):
         ),
         CheckConstraint(
             "retry_count >= 0",
-            name = "ck_notification_jobs_retry_count_positive"
+            name = "ck_notification_jobs_retry_count_nonnegative"
         ),
         CheckConstraint(
             "NOT (processed_at IS NOT NULL AND failed_at IS NOT NULL)",

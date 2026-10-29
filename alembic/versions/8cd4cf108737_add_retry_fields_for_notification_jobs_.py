@@ -35,10 +35,10 @@ def upgrade() -> None:
         """
     )
 
-    op.alter_column('notification_jobs', 'retry_count', existing_type = sa.Integer(), nullable=True)
+    op.alter_column('notification_jobs', 'retry_count', existing_type = sa.Integer(), nullable=False)
 
     op.create_check_constraint(
-        'ck_notification_jobs_retry_count_positive',
+        'ck_notification_jobs_retry_count_nonnegative',
         'notification_jobs',
         'retry_count >= 0',
     )
