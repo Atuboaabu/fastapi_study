@@ -256,3 +256,30 @@ class NotificationJob(SQLModel, table = True):
             index = True
         ),
     )
+
+    retry_count: int = Field(
+        default = 0,
+        nullable = False
+    )
+
+    next_attempt_at: datetime = Field(
+        sa_column = Column(
+            DateTime(timezone = True),
+            server_default = func.now()
+            nullable = False,
+        )
+    )
+
+    last_error: str | None = Field(
+        default = None,
+        max_length = 50,
+        nullable = True
+    )
+
+    failed_at: datetime | None = Field(
+        default = None,
+        sa_column = Column(
+            DateTime(timezone = True),
+            nullable = True,
+        ),
+    )
