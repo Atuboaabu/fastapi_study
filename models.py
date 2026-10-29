@@ -265,7 +265,7 @@ class NotificationJob(SQLModel, table = True):
     next_attempt_at: datetime = Field(
         sa_column = Column(
             DateTime(timezone = True),
-            server_default = func.now()
+            server_default = func.now(),
             nullable = False,
         )
     )
