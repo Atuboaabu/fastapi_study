@@ -3,9 +3,10 @@ from time import sleep
 from services import transaction, notification
 from session_factory import create_session
 from models import NotificationJob
+from services.result import NotificationJobClaim
 
 def processor(
-    notification: NotificationJob
+    notification: NotificationJobClaim
 ):
     print(
         f"""
@@ -25,15 +26,19 @@ def processor(
     )
 
 def notification_worker_loop():
-    max_attempts = 5
-    base_delay_seconds = 2
-    args = [processor, max_attempts, base_delay_seconds]
+    worker_id = 5
+    lease_seconds = 2
+    args = [worker_id, lease_seconds]
 
     while True:
-        result = transaction.run_transaction_once(
+        claim = transaction.run_transaction_once(
             create_session,
-            notification.process_one_notification_operation,
+            notification.claim_one_notification_operation,
             args
         )
-        if result == 0:
+
+        if claim is None:
             sleep(1)
+            continue
+
+        processor(claim)

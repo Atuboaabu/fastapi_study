@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 
 from models import NotificationJob
 from exceptions import RetryableNotificationException, PermanentNotificationException
+from services.result import NotificationJobClaim
 
 def process_one_notification_operation(
     session: Session,
@@ -49,3 +50,44 @@ def process_one_notification_operation(
 
     session.flush()
     return "processed"
+
+def claim_one_notification_operation(
+    session: Session,
+    args: list
+):
+    assert len(args) == 2
+    worker_id = args[0]
+    lease_seconds = args[1]
+    
+    statement = select(NotificationJob).where(
+        NotificationJob.processed_at.is_(None),
+        NotificationJob.failed_at.is_(None),
+        NotificationJob.next_attempt_at <= func.now(),
+        NotificationJob.lease_until.is_(None) or 
+        NotificationJob.lease_until <= func.now()
+    ).order_by(
+        NotificationJob.id
+    ).limit(1).with_for_update(skip_locked=True)
+    notification = session.exec(statement).first()
+
+    if notification is None:
+        return None
+    
+    notification.lease_until = datetime.now(timezone.utc) + timedelta(seconds=lease_seconds)
+    notification.claimed_by = f"worker-{worker_id}"
+
+    session.flush()
+    return NotificationJobClaim(
+        id=notification.id,
+        event_id=notification.event_id,
+        job_type=notification.job_type,
+        payload=notification.payload,
+        created_at=notification.created_at,
+        processed_at=notification.processed_at,
+        retry_count=notification.retry_count,
+        next_attempt_at=notification.next_attempt_at,
+        last_error=notification.last_error,
+        failed_at=notification.failed_at,
+        lease_until=notification.lease_until,
+        claimed_by=notification.claimed_by
+    )
