@@ -27,7 +27,7 @@ def upgrade() -> None:
     op.create_check_constraint(
         'ck_notification_jobs_lease_until_claimed_by_synchronized',
         'notification_jobs',
-        '(lease_util IS NULL AND claimed_by IS NULL) OR (claimed_by IS NOT NULL AND lease_util IS NOT NULL)'
+        '(lease_until IS NULL AND claimed_by IS NULL) OR (claimed_by IS NOT NULL AND lease_until IS NOT NULL)'
     )
     # ### end Alembic commands ###
 
