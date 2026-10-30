@@ -26,29 +26,18 @@ def processor(
     )
 
 def notification_worker_loop():
-    running = True
     max_attempts = 5
     base_delay_seconds = 2
     args = [processor, max_attempts, base_delay_seconds]
-    session = create_session()
 
-    while running:
-        job_count = session.exec(
-            select(func.count())
-            .select_from(NotificationJob)
-            .where(
-                NotificationJob.processed_at.is_(None),
-                NotificationJob.failed_at.is_(None),
-                NotificationJob.next_attempt_at <= func.now()
-            )
-        ).one()
-        if job_count > 0:
-            transaction.run_transaction_once(
+    while True:
+        try:
+            result = transaction.run_transaction_once(
                 create_session,
                 notification.process_one_notification_operation,
                 args
             )
-        else:
-            sleep(1)
-
-    session.close()
+            if result == 0:
+                sleep(1)
+        except Exception:
+            pass
