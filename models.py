@@ -222,8 +222,8 @@ class NotificationJob(SQLModel, table = True):
             name = "ck_notification_jobs_processed_failed_not_null_together"
         ),
         CheckConstraint(
-            "(lease_util IS NULL AND claimed_by IS NOT NULL) OR (claimed_by IS NULL AND lease_util IS NOT NULL)",
-            name = "ck_notification_jobs_lease_util_claimed_by_synchronized"
+            "(lease_until IS NULL AND claimed_by IS NULL) OR (claimed_by IS NOT NULL AND lease_until IS NOT NULL)",
+            name = "ck_notification_jobs_lease_until_claimed_by_synchronized"
         ),
     )
 
@@ -296,7 +296,7 @@ class NotificationJob(SQLModel, table = True):
         ),
     )
 
-    lease_util: datetime | None = Field(
+    lease_until: datetime | None = Field(
         default = None,
         sa_column = Column(
             DateTime(timezone = True),
