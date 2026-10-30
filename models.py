@@ -296,7 +296,7 @@ class NotificationJob(SQLModel, table = True):
         ),
     )
 
-    lease_until: datetime | None = Field(
+    lease_until: datetime = Field(
         default = None,
         sa_column = Column(
             DateTime(timezone = True),
@@ -304,7 +304,7 @@ class NotificationJob(SQLModel, table = True):
         )
     )
 
-    claimed_by: str | None = Field(
+    claimed_by: str = Field(
         default = None,
         max_length = 100,
         nullable = True

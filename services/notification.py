@@ -1,4 +1,5 @@
 from sqlmodel import Session, select, func
+from sqlalchemy import or_
 from datetime import datetime, timezone, timedelta
 
 from models import NotificationJob
@@ -63,8 +64,10 @@ def claim_one_notification_operation(
         NotificationJob.processed_at.is_(None),
         NotificationJob.failed_at.is_(None),
         NotificationJob.next_attempt_at <= func.now(),
-        NotificationJob.lease_until.is_(None) or 
-        NotificationJob.lease_until <= func.now()
+        or_(
+            NotificationJob.lease_until.is_(None),
+            NotificationJob.lease_until <= func.now()
+        )
     ).order_by(
         NotificationJob.id
     ).limit(1).with_for_update(skip_locked=True)
@@ -74,7 +77,9 @@ def claim_one_notification_operation(
         return None
     
     notification.lease_until = datetime.now(timezone.utc) + timedelta(seconds=lease_seconds)
-    notification.claimed_by = f"worker-{worker_id}"
+    notification.claimed_by = worker_id
+
+    assert notification.id is not None
 
     session.flush()
     return NotificationJobClaim(
