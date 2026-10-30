@@ -220,7 +220,11 @@ class NotificationJob(SQLModel, table = True):
         CheckConstraint(
             "NOT (processed_at IS NOT NULL AND failed_at IS NOT NULL)",
             name = "ck_notification_jobs_processed_failed_not_null_together"
-        )
+        ),
+        CheckConstraint(
+            "(lease_util IS NULL AND claimed_by IS NOT NULL) OR (claimed_by IS NULL AND lease_util IS NOT NULL)",
+            name = "ck_notification_jobs_lease_util_claimed_by_synchronized"
+        ),
     )
 
     id: int | None = Field(
@@ -290,4 +294,18 @@ class NotificationJob(SQLModel, table = True):
             DateTime(timezone = True),
             nullable = True,
         ),
+    )
+
+    lease_util: datetime | None = Field(
+        default = None,
+        sa_column = Column(
+            DateTime(timezone = True),
+            nullable = True,
+        )
+    )
+
+    claimed_by: str | None = Field(
+        default = None,
+        max_length = 100,
+        nullable = True
     )
