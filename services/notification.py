@@ -94,5 +94,6 @@ def claim_one_notification_operation(
         last_error=notification.last_error,
         failed_at=notification.failed_at,
         lease_until=notification.lease_until,
-        claimed_by=notification.claimed_by
+        claimed_by=notification.claimed_by,
+        claim_version=notification.claim_version
     )

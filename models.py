@@ -309,3 +309,8 @@ class NotificationJob(SQLModel, table = True):
         max_length = 100,
         nullable = True
     )
+
+    claim_version: int = Field(
+        default=0,
+        nullable=False
+    )

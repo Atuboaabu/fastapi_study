@@ -39,3 +39,4 @@ class NotificationJobClaim:
     failed_at: datetime | None
     lease_until: datetime | None
     claimed_by: str | None
+    claim_version: int
