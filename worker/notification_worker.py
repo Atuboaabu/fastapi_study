@@ -1,4 +1,3 @@
-from sqlmodel import select, func
 from time import sleep
 
 from services import transaction, notification
@@ -31,13 +30,10 @@ def notification_worker_loop():
     args = [processor, max_attempts, base_delay_seconds]
 
     while True:
-        try:
-            result = transaction.run_transaction_once(
-                create_session,
-                notification.process_one_notification_operation,
-                args
-            )
-            if result == 0:
-                sleep(1)
-        except Exception:
-            pass
+        result = transaction.run_transaction_once(
+            create_session,
+            notification.process_one_notification_operation,
+            args
+        )
+        if result == 0:
+            sleep(1)
