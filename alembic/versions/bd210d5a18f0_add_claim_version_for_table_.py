@@ -32,6 +32,12 @@ def upgrade() -> None:
     )
 
     op.alter_column('notification_jobs', 'claim_version', existing_type=sa.Integer(), nullable=False)
+
+    op.create_check_constraint(
+        'ck_notification_jobs_claim_version_nonnegative',
+        'notification_jobs',
+        'claim_version >= 0'
+    )
     # ### end Alembic commands ###
 
 

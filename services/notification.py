@@ -78,6 +78,7 @@ def claim_one_notification_operation(
     
     notification.lease_until = datetime.now(timezone.utc) + timedelta(seconds=lease_seconds)
     notification.claimed_by = worker_id
+    notification.claim_version += 1
 
     assert notification.id is not None
 
