@@ -3,54 +3,7 @@ from sqlalchemy import or_
 from datetime import datetime, timezone, timedelta
 
 from models import NotificationJob
-from exceptions import RetryableNotificationException, PermanentNotificationException
 from services.result import NotificationJobClaim
-
-def process_one_notification_operation(
-    session: Session,
-    args: list
-):
-    assert len(args) == 3
-    processor = args[0]
-    max_attempts = args[1]
-    base_delay_seconds = args[2]
-    
-    statement = select(NotificationJob).where(
-        NotificationJob.processed_at.is_(None),
-        NotificationJob.failed_at.is_(None),
-        NotificationJob.next_attempt_at <= func.now()
-    ).order_by(
-        NotificationJob.id
-    ).limit(1).with_for_update(skip_locked=True)
-    notification = session.exec(statement).first()
-
-    if notification is None:
-        return 0
-    
-    try:
-        processor(notification)
-        notification.processed_at = datetime.now(timezone.utc)
-    except RetryableNotificationException as exc:
-        notification.retry_count += 1
-        notification.last_error = str(exc)
-        if notification.retry_count < max_attempts:
-            delay_seconds = base_delay_seconds * (2 ** (notification.retry_count - 1))
-            notification.next_attempt_at = datetime.now(timezone.utc) + timedelta(seconds=delay_seconds)
-            session.flush()
-            return "scheduled_delay"
-        else:
-            notification.failed_at = datetime.now(timezone.utc)
-            session.flush()
-            return "failed"
-    except PermanentNotificationException as exc:
-        notification.retry_count += 1
-        notification.last_error = str(exc)
-        notification.failed_at = datetime.now(timezone.utc)
-        session.flush()
-        return "failed"
-
-    session.flush()
-    return "processed"
 
 def claim_one_notification_operation(
     session: Session,
@@ -142,7 +95,7 @@ def finalize_notification_retry_operation(
     assert len(args) == 5
     claim_id = args[0]
     claim_version = args[1]
-    exc = args[2]
+    error_msg = args[2]
     max_attempts = args[3]
     base_delay_seconds = args[4]
 
@@ -160,7 +113,7 @@ def finalize_notification_retry_operation(
         return "stale_claim"
 
     notification.retry_count += 1
-    notification.last_error = str(exc)
+    notification.last_error = error_msg
     notification.lease_until = None
     notification.claimed_by = None
     if notification.retry_count < max_attempts:
@@ -180,7 +133,7 @@ def finalize_notification_permanent_operation(
     assert len(args) == 3
     claim_id = args[0]
     claim_version = args[1]
-    exc = args[2]
+    error_msg = args[2]
 
     notification = session.exec(
         select(NotificationJob)
@@ -196,7 +149,7 @@ def finalize_notification_permanent_operation(
         return "stale_claim"
 
     notification.retry_count += 1
-    notification.last_error = str(exc)
+    notification.last_error = error_msg
     notification.failed_at = datetime.now(timezone.utc)
     notification.lease_until = None
     notification.claimed_by = None

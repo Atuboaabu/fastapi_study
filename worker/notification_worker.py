@@ -46,29 +46,31 @@ def notification_worker_loop():
         try:
             processor(claim)
         except RetryableNotificationException as exc:
-            transaction.run_transaction_once(
+            error_msg = str(exc)[:500]
+            result = transaction.run_transaction_once(
                 create_session,
                 notification.finalize_notification_retry_operation,
                 [
                     claim.id,
                     claim.claim_version,
-                    exc,
+                    error_msg,
                     max_attempts,
                     base_delay_seconds,
                 ]
             )
         except PermanentNotificationException as exc:
-            transaction.run_transaction_once(
+            error_msg = str(exc)[:500]
+            result = transaction.run_transaction_once(
                 create_session,
                 notification.finalize_notification_permanent_operation,
                 [
                     claim.id,
                     claim.claim_version,
-                    exc,
+                    error_msg,
                 ]
             )
         else:
-            transaction.run_transaction_once(
+            result = transaction.run_transaction_once(
                 create_session,
                 notification.finalize_notification_success_operation,
                 [
@@ -76,3 +78,4 @@ def notification_worker_loop():
                     claim.claim_version,
                 ]
             )
+        print(f"transaction process finalize result = {result}")
