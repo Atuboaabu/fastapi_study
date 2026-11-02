@@ -134,3 +134,67 @@ def finalize_notification_success_operation(
         return "stale_claim"
     
     return "processed"
+
+def finalize_notification_retry_operation(
+    session: Session,
+    args: list
+):
+    assert len(args) == 3
+    claim_id = args[0]
+    claim_version = args[1]
+    exc = args[2]
+    max_attempts = args[3]
+    base_delay_seconds = args[4]
+
+    notification = session.exec(
+        select(NotificationJob)
+        .where(
+            NotificationJob.id == claim_id,
+            NotificationJob.claim_version == claim_version,
+            NotificationJob.processed_at.is_(None),
+            NotificationJob.failed_at.is_(None)
+        )
+    ).first()
+
+    if notification is None:
+        return "no_notification"
+
+    notification.retry_count += 1
+    notification.last_error = str(exc)
+    if notification.retry_count < max_attempts:
+        delay_seconds = base_delay_seconds * (2 ** (notification.retry_count - 1))
+        notification.next_attempt_at = datetime.now(timezone.utc) + timedelta(seconds=delay_seconds)
+        session.flush()
+        return "scheduled_delay"
+    else:
+        notification.failed_at = datetime.now(timezone.utc)
+        session.flush()
+        return "failed"
+
+def finalize_notification_permanent_operation(
+    session: Session,
+    args: list
+):
+    assert len(args) == 3
+    claim_id = args[0]
+    claim_version = args[1]
+    exc = args[2]
+
+    notification = session.exec(
+        select(NotificationJob)
+        .where(
+            NotificationJob.id == claim_id,
+            NotificationJob.claim_version == claim_version,
+            NotificationJob.processed_at.is_(None),
+            NotificationJob.failed_at.is_(None)
+        )
+    ).first()
+
+    if notification is None:
+        return "no_notification"
+
+    notification.retry_count += 1
+    notification.last_error = str(exc)
+    notification.failed_at = datetime.now(timezone.utc)
+    session.flush()
+    return "failed"
