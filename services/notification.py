@@ -108,20 +108,29 @@ def finalize_notification_success_operation(
     claim_id = args[0]
     claim_version = args[1]
 
-    row_count = session.exec(
-        update(NotificationJob).values(
+    statement = (
+        update(NotificationJob)
+        .values(
             processed_at = func.now(),
             lease_until = None,
             claimed_by = None
-        ).where(
+        )
+        .where(
             NotificationJob.id == claim_id,
             NotificationJob.claim_version == claim_version,
-            NotificationJob.processed_at == None,
-            NotificationJob.failed_at == None
+            NotificationJob.processed_at.is_(None),
+            NotificationJob.failed_at.is_(None)
         )
-    ).one()
+        .returning(
+            NotificationJob.id
+        )
+    )
 
-    if row_count == 0:
+    updated_id = session.exec(
+        statement
+    ).one_or_none()
+
+    if updated_id is None:
         return "stale_claim"
     
     return "processed"

@@ -26,7 +26,7 @@ def processor(
     )
 
 def notification_worker_loop():
-    worker_id = 5
+    worker_id = "notification-worker-5"
     lease_seconds = 2
     args = [worker_id, lease_seconds]
 
@@ -48,4 +48,3 @@ def notification_worker_loop():
             notification.finalize_notification_success_operation,
             [claim.id, claim.claim_version]
         )
-        
