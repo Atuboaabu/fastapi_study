@@ -4,6 +4,7 @@ from services import transaction, notification
 from session_factory import create_session
 from models import NotificationJob
 from services.result import NotificationJobClaim
+from exceptions import RetryableNotificationException, PermanentNotificationException
 
 def processor(
     notification: NotificationJobClaim
@@ -28,6 +29,8 @@ def processor(
 def notification_worker_loop():
     worker_id = "notification-worker-5"
     lease_seconds = 2
+    max_attempts = 5
+    base_delay_seconds = 2
     args = [worker_id, lease_seconds]
 
     while True:
@@ -40,11 +43,36 @@ def notification_worker_loop():
         if claim is None:
             sleep(1)
             continue
-
-        processor(claim)
-
-        finalize_result = transaction.run_transaction_once(
-            create_session,
-            notification.finalize_notification_success_operation,
-            [claim.id, claim.claim_version]
-        )
+        try:
+            processor(claim)
+        except RetryableNotificationException as exc:
+            transaction.run_transaction_once(
+                create_session,
+                notification.finalize_notification_retry_operation,
+                [
+                    claim.id,
+                    claim.claim_version,
+                    exc,
+                    max_attempts,
+                    base_delay_seconds,
+                ]
+            )
+        except PermanentNotificationException as exc:
+            transaction.run_transaction_once(
+                create_session,
+                notification.finalize_notification_permanent_operation,
+                [
+                    claim.id,
+                    claim.claim_version,
+                    exc,
+                ]
+            )
+        else:
+            transaction.run_transaction_once(
+                create_session,
+                notification.finalize_notification_success_operation,
+                [
+                    claim.id,
+                    claim.claim_version,
+                ]
+            )

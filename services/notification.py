@@ -139,7 +139,7 @@ def finalize_notification_retry_operation(
     session: Session,
     args: list
 ):
-    assert len(args) == 3
+    assert len(args) == 5
     claim_id = args[0]
     claim_version = args[1]
     exc = args[2]
@@ -153,17 +153,19 @@ def finalize_notification_retry_operation(
             NotificationJob.claim_version == claim_version,
             NotificationJob.processed_at.is_(None),
             NotificationJob.failed_at.is_(None)
-        )
+        ).with_for_update()
     ).first()
 
     if notification is None:
-        return "no_notification"
+        return "stale_claim"
 
     notification.retry_count += 1
     notification.last_error = str(exc)
     if notification.retry_count < max_attempts:
         delay_seconds = base_delay_seconds * (2 ** (notification.retry_count - 1))
         notification.next_attempt_at = datetime.now(timezone.utc) + timedelta(seconds=delay_seconds)
+        notification.lease_until = None
+        notification.claimed_by = None
         session.flush()
         return "scheduled_delay"
     else:
@@ -187,14 +189,16 @@ def finalize_notification_permanent_operation(
             NotificationJob.claim_version == claim_version,
             NotificationJob.processed_at.is_(None),
             NotificationJob.failed_at.is_(None)
-        )
+        ).with_for_update()
     ).first()
 
     if notification is None:
-        return "no_notification"
+        return "stale_claim"
 
     notification.retry_count += 1
     notification.last_error = str(exc)
     notification.failed_at = datetime.now(timezone.utc)
+    notification.lease_until = None
+    notification.claimed_by None
     session.flush()
     return "failed"
