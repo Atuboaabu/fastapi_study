@@ -161,11 +161,11 @@ def finalize_notification_retry_operation(
 
     notification.retry_count += 1
     notification.last_error = str(exc)
+    notification.lease_until = None
+    notification.claimed_by = None
     if notification.retry_count < max_attempts:
         delay_seconds = base_delay_seconds * (2 ** (notification.retry_count - 1))
         notification.next_attempt_at = datetime.now(timezone.utc) + timedelta(seconds=delay_seconds)
-        notification.lease_until = None
-        notification.claimed_by = None
         session.flush()
         return "scheduled_delay"
     else:
@@ -199,6 +199,6 @@ def finalize_notification_permanent_operation(
     notification.last_error = str(exc)
     notification.failed_at = datetime.now(timezone.utc)
     notification.lease_until = None
-    notification.claimed_by None
+    notification.claimed_by = None
     session.flush()
     return "failed"
