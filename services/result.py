@@ -37,6 +37,6 @@ class NotificationJobClaim:
     next_attempt_at: datetime
     last_error: str | None
     failed_at: datetime | None
-    lease_until: datetime | None
-    claimed_by: str | None
+    lease_until: datetime
+    claimed_by: str
     claim_version: int

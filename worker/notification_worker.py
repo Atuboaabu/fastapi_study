@@ -42,3 +42,10 @@ def notification_worker_loop():
             continue
 
         processor(claim)
+
+        finalize_result = transaction.run_transaction_once(
+            create_session,
+            notification.finalize_notification_success_operation,
+            [claim.id, claim.claim_version]
+        )
+        

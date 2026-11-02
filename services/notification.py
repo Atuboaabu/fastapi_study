@@ -1,4 +1,4 @@
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, update
 from sqlalchemy import or_
 from datetime import datetime, timezone, timedelta
 
@@ -98,3 +98,30 @@ def claim_one_notification_operation(
         claimed_by=notification.claimed_by,
         claim_version=notification.claim_version
     )
+
+
+def finalize_notification_success_operation(
+    session: Session,
+    args: list
+):
+    assert len(args) == 2
+    claim_id = args[0]
+    claim_version = args[1]
+
+    row_count = session.exec(
+        update(NotificationJob).values(
+            processed_at = func.now(),
+            lease_until = None,
+            claimed_by = None
+        ).where(
+            NotificationJob.id == claim_id,
+            NotificationJob.claim_version == claim_version,
+            NotificationJob.processed_at == None,
+            NotificationJob.failed_at == None
+        )
+    ).one()
+
+    if row_count == 0:
+        return "stale_claim"
+    
+    return "processed"
