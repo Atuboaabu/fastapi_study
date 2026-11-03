@@ -2,7 +2,6 @@ from time import sleep
 
 from services import transaction, notification
 from session_factory import create_session
-from models import NotificationJob
 from services.result import NotificationJobClaim
 from exceptions import RetryableNotificationException, PermanentNotificationException
 
@@ -21,7 +20,6 @@ def processor(
                 id: {notification.id}
                 event_id: {notification.event_id}
                 job_type: {notification.job_type}
-                payload: {notification.payload}
                 created_at: {notification.created_at}
                 processed_at: {notification.processed_at}
                 retry_count: {notification.retry_count}
@@ -33,7 +31,7 @@ def processor(
 
 def notification_worker_loop():
     configure_logging()
-    
+
     worker_id = "notification-worker-5"
     lease_seconds = 2
     max_attempts = 5
@@ -54,15 +52,6 @@ def notification_worker_loop():
             processor(claim)
         except RetryableNotificationException as exc:
             error_msg = str(exc)[:500]
-            logger.warning(
-                "notification retry scheduled: "
-                "job_id = %s, "
-                "claim_version = %s, "
-                "error_msg = %s",
-                claim.id,
-                claim.claim_version,
-                error_msg
-            )
 
             result = transaction.run_transaction_once(
                 create_session,
@@ -77,15 +66,6 @@ def notification_worker_loop():
             )
         except PermanentNotificationException as exc:
             error_msg = str(exc)[:500]
-            logger.error(
-                "notification failed: "
-                "job_id = %s, "
-                "claim_version = %s, "
-                "error_msg = %s",
-                claim.id,
-                claim.claim_version,
-                error_msg
-            )
 
             result = transaction.run_transaction_once(
                 create_session,
@@ -113,6 +93,26 @@ def notification_worker_loop():
                 "claim_version = %s",
                 claim.id,
                 claim.claim_version
+            )
+        elif result == "scheduled_delay":
+            logger.warning(
+                "notification retry scheduled: "
+                "job_id = %s, "
+                "claim_version = %s, "
+                "error_msg = %s",
+                claim.id,
+                claim.claim_version,
+                error_msg
+            )
+        elif result == "failed":
+            logger.error(
+                "notification failed: "
+                "job_id = %s, "
+                "claim_version = %s, "
+                "error_msg = %s",
+                claim.id,
+                claim.claim_version,
+                error_msg
             )
         elif result == "stale_claim":
             logger.warning(
