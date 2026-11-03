@@ -6,6 +6,7 @@ from models import NotificationJob
 from services.result import NotificationJobClaim
 from exceptions import RetryableNotificationException, PermanentNotificationException
 
+from logging_config import configure_logging
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,8 @@ def processor(
     )
 
 def notification_worker_loop():
+    configure_logging()
+    
     worker_id = "notification-worker-5"
     lease_seconds = 2
     max_attempts = 5
@@ -50,17 +53,17 @@ def notification_worker_loop():
         try:
             processor(claim)
         except RetryableNotificationException as exc:
+            error_msg = str(exc)[:500]
             logger.warning(
-                "notification retry scheduled"
-                "job_id = %s"
-                "claim_version = %s"
+                "notification retry scheduled: "
+                "job_id = %s, "
+                "claim_version = %s, "
                 "error_msg = %s",
                 claim.id,
                 claim.claim_version,
                 error_msg
             )
 
-            error_msg = str(exc)[:500]
             result = transaction.run_transaction_once(
                 create_session,
                 notification.finalize_notification_retry_operation,
@@ -73,17 +76,17 @@ def notification_worker_loop():
                 ]
             )
         except PermanentNotificationException as exc:
+            error_msg = str(exc)[:500]
             logger.error(
-                "notification failed"
-                "job_id = %s"
-                "claim_version = %s"
+                "notification failed: "
+                "job_id = %s, "
+                "claim_version = %s, "
                 "error_msg = %s",
                 claim.id,
                 claim.claim_version,
                 error_msg
             )
 
-            error_msg = str(exc)[:500]
             result = transaction.run_transaction_once(
                 create_session,
                 notification.finalize_notification_permanent_operation,
@@ -94,14 +97,6 @@ def notification_worker_loop():
                 ]
             )
         else:
-            logger.warning(
-                "notification processed"
-                "job_id = %s"
-                "claim_version = %s",
-                claim.id,
-                claim.claim_version
-            )
-
             result = transaction.run_transaction_once(
                 create_session,
                 notification.finalize_notification_success_operation,
@@ -110,12 +105,20 @@ def notification_worker_loop():
                     claim.claim_version,
                 ]
             )
-
-            if result == "stale_claim":
-                logger.warning(
-                    "notification stale claim"
-                    "job_id = %s"
-                    "claim_version = %s",
-                    claim.id,
-                    claim.claim_version
-                )
+        
+        if result == "processed":
+            logger.info(
+                "notification processed: "
+                "job_id = %s, "
+                "claim_version = %s",
+                claim.id,
+                claim.claim_version
+            )
+        elif result == "stale_claim":
+            logger.warning(
+                "notification stale claim: "
+                "job_id = %s, "
+                "claim_version = %s",
+                claim.id,
+                claim.claim_version
+            )
